@@ -1,91 +1,45 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import type { AnalyzeResult } from '../types'
 
 interface Props {
   onResult: (result: AnalyzeResult) => void
 }
 
-type JobStatus = 'idle' | 'pending' | 'processing' | 'completed' | 'error'
-
 export function UrlForm({ onResult }: Props) {
   const [url, setUrl] = useState('')
-  const [status, setStatus] = useState<JobStatus>('idle')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [jobId, setJobId] = useState<string | null>(null)
-  const pollingRef = useRef<number | null>(null)
-
-  // ポーリングでジョブ状況を確認
-  useEffect(() => {
-    if (!jobId || status === 'completed' || status === 'error' || status === 'idle') {
-      return
-    }
-
-    const checkStatus = async () => {
-      try {
-        const res = await fetch(`/api/job-status?jobId=${jobId}`)
-        const data = await res.json()
-
-        if (data.status === 'completed' && data.result) {
-          setStatus('completed')
-          onResult(data.result)
-          setJobId(null)
-        } else if (data.status === 'error') {
-          setStatus('error')
-          setError(data.error || '分析に失敗しました')
-          setJobId(null)
-        } else {
-          setStatus(data.status)
-        }
-      } catch (err) {
-        console.error('Polling error:', err)
-      }
-    }
-
-    // 2秒ごとにポーリング
-    pollingRef.current = window.setInterval(checkStatus, 2000)
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-      }
-    }
-  }, [jobId, status, onResult])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setStatus('pending')
+    setLoading(true)
     setError(null)
 
     try {
-      const res = await fetch('/api/start-analysis', {
+      // Supabase Edge Function を呼び出し
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
         body: JSON.stringify({ url })
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to start analysis')
+        throw new Error(data.error || 'Failed to analyze')
       }
 
-      setJobId(data.jobId)
+      onResult(data)
     } catch (err: any) {
-      setStatus('error')
       setError(err.message)
-    }
-  }
-
-  const isLoading = status === 'pending' || status === 'processing'
-
-  const getStatusText = () => {
-    switch (status) {
-      case 'pending':
-        return '準備中...'
-      case 'processing':
-        return 'AIが分析中...'
-      default:
-        return '診断する'
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -103,22 +57,22 @@ export function UrlForm({ onResult }: Props) {
           placeholder="https://example.com/article"
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
           required
-          disabled={isLoading}
+          disabled={loading}
         />
       </div>
 
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={loading}
         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {isLoading ? (
+        {loading ? (
           <span className="flex items-center justify-center">
             <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {getStatusText()}
+            AIが分析中...
           </span>
         ) : (
           '診断する'
