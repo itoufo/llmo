@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { UrlForm } from './components/UrlForm'
 import { ScoreRadar } from './components/ScoreRadar'
 import { ScoreSummary } from './components/ScoreSummary'
+import { QuestionsList } from './components/QuestionsList'
 import { ImprovementsList } from './components/ImprovementsList'
 import type { AnalyzeResult } from './types'
 
@@ -41,8 +42,13 @@ function App() {
                   </div>
                   <div className="text-gray-600 font-semibold mt-2">総合スコア</div>
                   <div className="text-sm text-gray-500 mt-1">
-                    診断URL: <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{result.url}</a>
+                    診断URL: <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{result.url}</a>
                   </div>
+                  {result.details?.aiCitationComment && (
+                    <div className="mt-4 text-sm text-gray-600 bg-gray-50 rounded-lg p-3 max-w-xl mx-auto">
+                      {result.details.aiCitationComment}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -58,6 +64,13 @@ function App() {
                 <ScoreRadar result={result} />
               </div>
             </div>
+
+            {/* Questions */}
+            {result.questions && (
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                <QuestionsList result={result} />
+              </div>
+            )}
 
             {/* Improvements */}
             <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">

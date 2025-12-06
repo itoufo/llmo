@@ -1,9 +1,29 @@
+export interface Improvement {
+  priority: 'high' | 'medium' | 'low'
+  category: 'structure' | 'content' | 'eeat' | 'question' | 'concept'
+  issue: string
+  action: string
+  example?: string
+  enablesQuestions?: string[]
+}
+
+export interface PartialQuestion {
+  question: string
+  missing: string
+}
+
+export interface QuestionsEvaluation {
+  answerable: string[]
+  partial: PartialQuestion[]
+  afterImprovement: string[]
+}
+
 export interface LLMEvaluationResult {
   aiCitation: {
     score: number
     comment: string
-    questions: string[]
   }
+  questions: QuestionsEvaluation
   questionFit: {
     score: number
     covered: string[]
@@ -23,4 +43,5 @@ export interface LLMEvaluationResult {
     strengths: string[]
     weaknesses: string[]
   }
+  improvements: Improvement[]
 }

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { fetchHTML } from './lib/fetcher'
 import { extractMainContent } from './lib/extractor'
 import { evaluateWithLLM } from './lib/evaluator'
-import { calculateOverallScore, extractImprovements } from './lib/scorer'
+import { calculateOverallScore, getImprovements } from './lib/scorer'
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -83,7 +83,7 @@ export const handler: Handler = async (event) => {
     // 4. スコア計算
     console.log('[analyze] Calculating scores...')
     const overall = calculateOverallScore(llmResult)
-    const improvements = extractImprovements(llmResult)
+    const improvements = getImprovements(llmResult)
 
     const result = {
       url,
@@ -96,9 +96,14 @@ export const handler: Handler = async (event) => {
         overall
       },
       improvements,
+      questions: llmResult.questions,
       details: {
-        questions: llmResult.aiCitation.questions,
-        missingConcepts: llmResult.coverage.missing
+        aiCitationComment: llmResult.aiCitation.comment,
+        missingConcepts: llmResult.coverage.missing,
+        coveredConcepts: llmResult.coverage.covered,
+        structureIssues: llmResult.structure.issues,
+        eeatStrengths: llmResult.eeat.strengths,
+        eeatWeaknesses: llmResult.eeat.weaknesses
       }
     }
 

@@ -1,4 +1,4 @@
-import type { LLMEvaluationResult } from '../types'
+import type { LLMEvaluationResult, Improvement } from '../types'
 
 // 各スコアの重み（合計1.0）
 const WEIGHTS = {
@@ -24,36 +24,67 @@ export function calculateOverallScore(result: LLMEvaluationResult): number {
 }
 
 /**
- * LLM評価結果から改善点を抽出
- * 優先度の高いものから最大5つまで返す
+ * LLM評価結果から改善案を取得
+ * LLMが直接生成した具体的な改善案をそのまま返す
  */
-export function extractImprovements(result: LLMEvaluationResult): string[] {
-  const improvements: string[] = []
+export function getImprovements(result: LLMEvaluationResult): Improvement[] {
+  // LLMが生成した改善案がある場合はそれを使用
+  if (result.improvements && result.improvements.length > 0) {
+    return result.improvements
+  }
 
-  // 構造の問題点（最優先）
-  if (result.structure.issues.length > 0) {
-    improvements.push(...result.structure.issues.slice(0, 2))
+  // フォールバック：従来の方式で改善案を生成
+  return generateFallbackImprovements(result)
+}
+
+/**
+ * フォールバック用の改善案生成（LLMが改善案を返さなかった場合）
+ */
+function generateFallbackImprovements(result: LLMEvaluationResult): Improvement[] {
+  const improvements: Improvement[] = []
+
+  // 構造の問題点
+  for (const issue of result.structure.issues.slice(0, 2)) {
+    improvements.push({
+      priority: 'high',
+      category: 'structure',
+      issue,
+      action: '記事の構造を見直して修正する'
+    })
   }
 
   // 質問適合の不足
-  if (result.questionFit.missing.length > 0) {
-    const missing = result.questionFit.missing.slice(0, 2).join('、')
-    improvements.push(`不足している質問: ${missing}`)
+  for (const missing of result.questionFit.missing.slice(0, 2)) {
+    improvements.push({
+      priority: 'medium',
+      category: 'question',
+      issue: `「${missing}」に対する回答がない`,
+      action: `「${missing}」に答えるセクションを追加する`,
+      example: `Q: ${missing}\nA: [回答を記載]`
+    })
   }
 
   // 概念カバレッジの不足
-  if (result.coverage.missing.length > 0) {
-    const missing = result.coverage.missing.slice(0, 2).join('、')
-    improvements.push(`追加すべき概念: ${missing}`)
+  for (const missing of result.coverage.missing.slice(0, 2)) {
+    improvements.push({
+      priority: 'medium',
+      category: 'concept',
+      issue: `「${missing}」の概念がカバーされていない`,
+      action: `「${missing}」について説明するセクションを追加する`
+    })
   }
 
   // E-E-A-Tの弱み
-  if (result.eeat.weaknesses.length > 0) {
-    improvements.push(...result.eeat.weaknesses.slice(0, 2))
+  for (const weakness of result.eeat.weaknesses.slice(0, 2)) {
+    improvements.push({
+      priority: 'low',
+      category: 'eeat',
+      issue: weakness,
+      action: '信頼性を高める情報を追加する'
+    })
   }
 
-  // 最大5個まで
-  return improvements.slice(0, 5)
+  return improvements.slice(0, 6)
 }
 
 /**

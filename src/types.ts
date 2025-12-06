@@ -2,6 +2,26 @@ export interface AnalyzeRequest {
   url: string
 }
 
+export interface Improvement {
+  priority: 'high' | 'medium' | 'low'
+  category: 'structure' | 'content' | 'eeat' | 'question' | 'concept'
+  issue: string
+  action: string
+  example?: string
+  enablesQuestions?: string[]
+}
+
+export interface PartialQuestion {
+  question: string
+  missing: string
+}
+
+export interface QuestionsEvaluation {
+  answerable: string[]
+  partial: PartialQuestion[]
+  afterImprovement: string[]
+}
+
 export interface AnalyzeResult {
   url: string
   scores: {
@@ -12,9 +32,14 @@ export interface AnalyzeResult {
     eeat: number
     overall: number
   }
-  improvements: string[]
+  improvements: Improvement[]
+  questions: QuestionsEvaluation
   details?: {
-    questions?: string[]
+    aiCitationComment?: string
     missingConcepts?: string[]
+    coveredConcepts?: string[]
+    structureIssues?: string[]
+    eeatStrengths?: string[]
+    eeatWeaknesses?: string[]
   }
 }
