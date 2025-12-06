@@ -33,3 +33,24 @@ comment on column analyses.overall is '総合スコア (0-100)';
 comment on column analyses.improvements is '改善点のリスト（JSON配列）';
 comment on column analyses.raw_result is 'LLMから返された生の評価結果（JSON）';
 comment on column analyses.created_at is '診断実行日時';
+
+-- analysis_jobs テーブルの作成（バックグラウンドジョブ管理用）
+create table if not exists analysis_jobs (
+  id uuid primary key default gen_random_uuid(),
+  url text not null,
+  status text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'error')),
+  result jsonb,
+  error text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- インデックスの作成
+create index if not exists idx_analysis_jobs_status on analysis_jobs(status);
+create index if not exists idx_analysis_jobs_created_at on analysis_jobs(created_at desc);
+
+-- コメント追加
+comment on table analysis_jobs is 'バックグラウンド分析ジョブを管理するテーブル';
+comment on column analysis_jobs.status is 'ジョブステータス: pending, processing, completed, error';
+comment on column analysis_jobs.result is '分析結果（JSON）';
+comment on column analysis_jobs.error is 'エラーメッセージ';

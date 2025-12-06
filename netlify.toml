@@ -14,6 +14,10 @@
   external_node_modules = ["cheerio"]
   timeout = 120
 
+[functions.analyze-background]
+  external_node_modules = ["cheerio"]
+  timeout = 900
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

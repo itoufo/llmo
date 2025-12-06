@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
 import type { LLMEvaluationResult } from '../types'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+  timeout: 120000  // 120秒
+})
 
 export async function evaluateWithLLM(text: string): Promise<LLMEvaluationResult> {
   const prompt = `
