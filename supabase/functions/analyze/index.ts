@@ -538,9 +538,13 @@ function generateRecommendedHead(seo: any, url: string, title: string, descripti
 }
 
 async function evaluateWithLLM(text: string, seoResult: any) {
+  const models = ['gpt-5-mini', 'gpt-4o-mini']
+
   const openai = new OpenAI({
     apiKey: Deno.env.get('OPENAI_API_KEY')!
   })
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
   const seoSummary = `
 【SEO現状】
@@ -662,38 +666,49 @@ ${seoSummary}
 }
 `
 
-  // リトライロジック（gpt-5-miniは空レスポンスを返すことがある）
+  // リトライロジック（モデル切替と長さ調整付き）
   let lastError: Error | null = null
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      console.log(`[analyze] OpenAI attempt ${attempt}/3`)
-      const res = await openai.chat.completions.create({
-        model: 'gpt-5-mini',
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        max_completion_tokens: 4000
-      })
 
-      const content = res.choices[0]?.message?.content
-      if (content) {
-        return JSON.parse(content)
-      }
+  for (const model of models) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`[analyze] OpenAI ${model} attempt ${attempt}/3`)
+        const res = await openai.chat.completions.create({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          // 4000で長さ切れが出たため少し増やす
+          max_completion_tokens: 6000
+        })
 
-      console.warn(`[analyze] Attempt ${attempt}: Empty response, finish_reason: ${res.choices[0]?.finish_reason}`)
-      lastError = new Error(`Empty response on attempt ${attempt}`)
+        const choice = res.choices?.[0]
+        const content = choice?.message?.content
 
-      // 次のリトライ前に少し待つ
-      if (attempt < 3) {
-        await new Promise(r => setTimeout(r, 1000 * attempt))
-      }
-    } catch (e) {
-      console.error(`[analyze] Attempt ${attempt} error:`, e)
-      lastError = e as Error
-      if (attempt < 3) {
-        await new Promise(r => setTimeout(r, 1000 * attempt))
+        if (!content) {
+          const finishReason = choice?.finish_reason || 'unknown'
+          const refusal = (choice as any)?.message?.refusal
+          throw new Error(
+            refusal
+              ? `LLM refused (${finishReason}): ${JSON.stringify(refusal)}`
+              : `Empty response (finish_reason=${finishReason})`
+          )
+        }
+
+        try {
+          return JSON.parse(content)
+        } catch (e: any) {
+          throw new Error(`Failed to parse JSON: ${e.message}`)
+        }
+      } catch (e: any) {
+        lastError = e
+        console.warn(`[analyze] ${model} attempt ${attempt} failed: ${e.message}`)
+        if (attempt < 3) {
+          await sleep(500 * attempt)
+        }
       }
     }
+    console.warn('[analyze] Switching model after repeated failures')
   }
 
-  throw new Error(`LLM failed after 3 attempts: ${lastError?.message}`)
+  throw new Error(`LLM failed after retries: ${lastError?.message}`)
 }
