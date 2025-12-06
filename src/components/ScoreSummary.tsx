@@ -21,8 +21,8 @@ function ScoreItem({ label, score, tooltip }: ScoreItemProps) {
     if (showTooltip && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
       setPosition({
-        top: rect.bottom + window.scrollY + 8,
-        left: rect.left + window.scrollX - 100
+        top: rect.bottom + 8,
+        left: rect.left - 100
       })
     }
   }, [showTooltip])

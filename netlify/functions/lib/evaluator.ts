@@ -6,6 +6,12 @@ const openai = new OpenAI({
   timeout: 120000  // 120秒
 })
 
+const EVALUATION_MODELS = ['gpt-5-mini', 'gpt-4o-mini']
+
+async function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export async function evaluateWithLLM(text: string): Promise<LLMEvaluationResult> {
   const prompt = `
 あなたはLLMO（AI検索最適化）の専門評価者です。
@@ -104,29 +110,58 @@ ${text.slice(0, 8000)}
 }
 `
 
-  try {
-    const res = await openai.chat.completions.create({
-      model: 'gpt-5-mini',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      max_completion_tokens: 4000
-    })
+  let lastError: Error | null = null
 
-    const content = res.choices[0]?.message?.content
-    if (!content) {
-      throw new Error('LLM returned empty response')
+  for (const model of EVALUATION_MODELS) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`[evaluateWithLLM] ${model} attempt ${attempt}/3`)
+
+        const res = await openai.chat.completions.create({
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          max_completion_tokens: 4000
+        })
+
+        const choice = res.choices?.[0]
+        const content = choice?.message?.content
+
+        if (!content) {
+          const finishReason = choice?.finish_reason || 'unknown'
+          const refusal = (choice as any)?.message?.refusal
+          throw new Error(
+            refusal
+              ? `LLM refused to answer (${finishReason}): ${JSON.stringify(refusal)}`
+              : `LLM returned empty response (finish_reason=${finishReason})`
+          )
+        }
+
+        let parsed: LLMEvaluationResult
+        try {
+          parsed = JSON.parse(content)
+        } catch (e: any) {
+          throw new Error(`Failed to parse JSON response: ${e.message}`)
+        }
+
+        // スコアが範囲内であることを確認
+        validateScores(parsed)
+
+        return parsed
+      } catch (error: any) {
+        lastError = error
+        console.warn(`[evaluateWithLLM] ${model} attempt ${attempt} failed: ${error.message}`)
+        if (attempt < 3) {
+          await sleep(500 * attempt)
+        }
+      }
     }
 
-    const result = JSON.parse(content) as LLMEvaluationResult
-
-    // スコアが範囲内であることを確認
-    validateScores(result)
-
-    return result
-  } catch (error: any) {
-    console.error('LLM evaluation failed:', error)
-    throw new Error(`LLM evaluation failed: ${error.message}`)
+    console.warn(`[evaluateWithLLM] switching to fallback model`)
   }
+
+  console.error('LLM evaluation failed after retries:', lastError)
+  throw new Error(`LLM evaluation failed after retries: ${lastError?.message}`)
 }
 
 function validateScores(result: LLMEvaluationResult): void {

@@ -662,17 +662,38 @@ ${seoSummary}
 }
 `
 
-  const res = await openai.chat.completions.create({
-    model: 'gpt-5-mini',
-    messages: [{ role: 'user', content: prompt }],
-    response_format: { type: 'json_object' },
-    max_completion_tokens: 4000
-  })
+  // リトライロジック（gpt-5-miniは空レスポンスを返すことがある）
+  let lastError: Error | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[analyze] OpenAI attempt ${attempt}/3`)
+      const res = await openai.chat.completions.create({
+        model: 'gpt-5-mini',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        max_completion_tokens: 4000
+      })
 
-  const content = res.choices[0]?.message?.content
-  if (!content) {
-    throw new Error('LLM returned empty response')
+      const content = res.choices[0]?.message?.content
+      if (content) {
+        return JSON.parse(content)
+      }
+
+      console.warn(`[analyze] Attempt ${attempt}: Empty response, finish_reason: ${res.choices[0]?.finish_reason}`)
+      lastError = new Error(`Empty response on attempt ${attempt}`)
+
+      // 次のリトライ前に少し待つ
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * attempt))
+      }
+    } catch (e) {
+      console.error(`[analyze] Attempt ${attempt} error:`, e)
+      lastError = e as Error
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 1000 * attempt))
+      }
+    }
   }
 
-  return JSON.parse(content)
+  throw new Error(`LLM failed after 3 attempts: ${lastError?.message}`)
 }
