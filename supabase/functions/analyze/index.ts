@@ -677,8 +677,8 @@ ${seoSummary}
           model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
-          // 4000で長さ切れが出たため少し増やす
-          max_completion_tokens: 6000
+          // 4000で長さ切れが出たためさらに増やす
+          max_completion_tokens: 15000
         })
 
         const choice = res.choices?.[0]

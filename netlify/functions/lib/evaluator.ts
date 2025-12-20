@@ -121,7 +121,7 @@ ${text.slice(0, 8000)}
           model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
-          max_completion_tokens: 4000
+          max_completion_tokens: 15000
         })
 
         const choice = res.choices?.[0]
