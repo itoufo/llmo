@@ -107,57 +107,69 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-animate">
+      <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-extrabold text-gray-900 mb-4">
-            LLMO + SEO Site Doctor
+        <div className="text-center mb-14 animate-in">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/30 mb-6">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <h1 className="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent mb-5 tracking-tight">
+            LLMO Doctor
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto font-medium">
             URLを入力するだけで、AIが引用したくなる度 + SEO最適化度をスコア化
           </p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-gray-500 mt-3 max-w-xl mx-auto">
             LLM（ChatGPT / Gemini / Claude等）と検索エンジン両方に最適化されたコンテンツか診断します
           </p>
         </div>
 
         {/* Input Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+        <div className="card-elevated p-8 mb-10 animate-in-delayed">
           <UrlForm onResult={setResult} />
         </div>
 
         {/* Results */}
         {result && (
-          <div ref={resultsRef} className="space-y-8 animate-fadeIn">
+          <div ref={resultsRef} className="space-y-8 animate-in">
             {/* Overall Score */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-              <div className="text-center mb-8">
+            <div className="card-elevated p-8 sm:p-10">
+              <div className="text-center mb-10">
                 <div className="inline-block">
-                  <div className="text-7xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    {result.scores.overall}
+                  <div className="relative">
+                    <div className="text-8xl sm:text-9xl font-extrabold text-gradient leading-none">
+                      {result.scores.overall}
+                    </div>
+                    <div className="absolute -top-2 -right-4 w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </div>
                   </div>
-                  <div className="text-gray-600 font-semibold mt-2">総合スコア</div>
+                  <div className="text-gray-600 font-semibold mt-3 text-lg">総合スコア</div>
 
                   {/* LLMO + SEO スコア表示 */}
                   {result.scores.llmoOverall !== undefined && result.scores.seoOverall !== undefined && (
-                    <div className="flex justify-center gap-8 mt-4">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600">{result.scores.llmoOverall}</div>
-                        <div className="text-sm text-gray-500">LLMO</div>
+                    <div className="flex justify-center gap-6 mt-6">
+                      <div className="px-6 py-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100">
+                        <div className="text-3xl font-bold text-gradient-blue">{result.scores.llmoOverall}</div>
+                        <div className="text-sm text-indigo-600 font-medium mt-1">LLMO</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">{result.scores.seoOverall}</div>
-                        <div className="text-sm text-gray-500">SEO</div>
+                      <div className="px-6 py-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100">
+                        <div className="text-3xl font-bold text-emerald-600">{result.scores.seoOverall}</div>
+                        <div className="text-sm text-emerald-600 font-medium mt-1">SEO</div>
                       </div>
                     </div>
                   )}
 
-                  <div className="text-sm text-gray-500 mt-4">
-                    診断URL: <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{result.url}</a>
+                  <div className="text-sm text-gray-500 mt-6 px-4 py-2 bg-gray-50 rounded-full inline-block">
+                    診断URL: <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 hover:underline break-all font-medium">{result.url}</a>
                   </div>
                   {result.details?.aiCitationComment && (
-                    <div className="mt-4 text-sm text-gray-600 bg-gray-50 rounded-lg p-3 max-w-xl mx-auto">
+                    <div className="mt-6 text-sm text-gray-600 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 max-w-xl mx-auto border border-indigo-100">
                       {result.details.aiCitationComment}
                     </div>
                   )}
@@ -165,22 +177,26 @@ function App() {
               </div>
 
               {/* LLMO詳細 */}
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-blue-600 mb-4 flex items-center">
-                  <span className="mr-2">🤖</span>
+              <div className="mb-10">
+                <h2 className="text-2xl font-bold text-gradient-blue mb-6 flex items-center justify-center sm:justify-start">
+                  <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center mr-3 shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </span>
                   LLMO診断
                   <Tooltip text="LLMO（LLM Optimization）= AIチャットボット（ChatGPT、Gemini、Claude等）があなたのコンテンツを引用・参照しやすくするための最適化指標です" />
                 </h2>
                 <ScoreSummary result={result} />
               </div>
-              <div className="pt-6 border-t border-gray-200 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">スコア分布</h2>
+              <div className="pt-8 border-t border-gray-100 mb-10">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">スコア分布</h2>
                 <ScoreRadar result={result} />
               </div>
 
               {/* SEO詳細 */}
               {result.seo && result.scores.seoOverall !== undefined && (
-                <div className="pt-6 border-t border-gray-200">
+                <div className="pt-8 border-t border-gray-100">
                   <SeoSummary seo={result.seo} seoOverall={result.scores.seoOverall} />
                 </div>
               )}
@@ -188,24 +204,24 @@ function App() {
 
             {/* Questions */}
             {result.questions && (
-              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+              <div className="card-elevated p-8 card-hover">
                 <QuestionsList result={result} />
               </div>
             )}
 
             {/* Improvements */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <div className="card-elevated p-8 card-hover">
               <ImprovementsList result={result} />
             </div>
 
             {/* Footer Actions */}
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-5">
               {/* Export buttons */}
               <div className="flex flex-wrap justify-center gap-3">
                 <button
                   onClick={exportAsPDF}
                   disabled={exporting}
-                  className="inline-flex items-center px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-medium rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-700 font-medium rounded-xl transition-all duration-300 text-sm border border-rose-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                 >
                   {exporting ? (
                     <>
@@ -220,32 +236,32 @@ function App() {
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      PDFでエクスポート
+                      PDF
                     </>
                   )}
                 </button>
                 <button
                   onClick={exportAsJSON}
-                  className="inline-flex items-center px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg transition-colors text-sm"
+                  className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 text-indigo-700 font-medium rounded-xl transition-all duration-300 text-sm border border-indigo-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  JSONでエクスポート
+                  JSON
                 </button>
                 <button
                   onClick={exportAsCSV}
-                  className="inline-flex items-center px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 font-medium rounded-lg transition-colors text-sm"
+                  className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 text-emerald-700 font-medium rounded-xl transition-all duration-300 text-sm border border-emerald-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  CSVでエクスポート
+                  CSV
                 </button>
               </div>
               <button
                 onClick={() => setResult(null)}
-                className="inline-flex items-center px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+                className="btn-secondary"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -257,8 +273,11 @@ function App() {
         )}
 
         {/* Footer */}
-        <div className="mt-16 text-center text-sm text-gray-500">
-          <p>Powered by OpenAI GPT | Built with Vite, React, Supabase Edge Functions</p>
+        <div className="mt-20 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full text-sm text-gray-500 border border-gray-100">
+            <span className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"></span>
+            Powered by OpenAI GPT | Built with Vite, React, Supabase Edge Functions
+          </div>
         </div>
       </div>
     </div>

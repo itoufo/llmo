@@ -28,9 +28,9 @@ export function SeoSummary({ seo, seoOverall }: Props) {
   const extSeo = seo as ExtendedSEOResult
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 bg-green-100'
-    if (score >= 60) return 'text-yellow-600 bg-yellow-100'
-    return 'text-red-600 bg-red-100'
+    if (score >= 80) return 'text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200'
+    if (score >= 60) return 'text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'
+    return 'text-rose-700 bg-gradient-to-r from-rose-50 to-red-50 border-rose-200'
   }
 
   const toggleExpand = (label: string) => {
@@ -60,34 +60,38 @@ export function SeoSummary({ seo, seoOverall }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-green-600 flex items-center">
-          <span className="mr-2">🔍</span>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-2xl font-bold text-gradient-blue flex items-center">
+          <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mr-3 shadow-md">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
           SEO診断
           <Tooltip text="SEO（Search Engine Optimization）= Google等の検索エンジンで上位表示されるための最適化指標です。タイトル、メタ情報、見出し構造、画像最適化などを評価します。" />
         </h2>
-        <div className={`px-4 py-2 rounded-full font-bold ${getScoreColor(seoOverall)}`}>
+        <div className={`px-5 py-2.5 rounded-xl font-bold border ${getScoreColor(seoOverall)}`}>
           {seoOverall}点
         </div>
       </div>
 
       {/* サマリー */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">H1</div>
-          <div className="text-lg font-bold">{extSeo.headings.h1Count}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">H1</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.headings.h1Count}</div>
         </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">H2</div>
-          <div className="text-lg font-bold">{extSeo.headings.h2Count}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">H2</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.headings.h2Count}</div>
         </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">画像</div>
-          <div className="text-lg font-bold">{extSeo.images.withAlt}/{extSeo.images.total}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">画像</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.images.withAlt}/{extSeo.images.total}</div>
         </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">内部リンク</div>
-          <div className="text-lg font-bold">{extSeo.links.internal}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">内部リンク</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.links.internal}</div>
         </div>
       </div>
 
@@ -123,12 +127,12 @@ export function SeoSummary({ seo, seoOverall }: Props) {
       )}
 
       {/* チェックリスト */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {items.map(item => (
-          <div key={item.label} className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium">{item.label}</span>
-              <span className={`px-2 py-1 rounded text-sm font-bold ${getScoreColor(item.score)}`}>
+          <div key={item.label} className="border-2 border-gray-100 rounded-2xl p-5 hover:shadow-md transition-all duration-300 hover:border-gray-200 bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold text-gray-800">{item.label}</span>
+              <span className={`px-3 py-1.5 rounded-xl text-sm font-bold border ${getScoreColor(item.score)}`}>
                 {item.score}
               </span>
             </div>
