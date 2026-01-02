@@ -408,7 +408,7 @@ export function SeoSummary({ seo, seoOverall }: Props) {
       </div>
 
       {/* 見出し構造のプレビュー */}
-      {extSeo.headings.structure && extSeo.headings.structure.length > 0 && (
+      {extSeo.headings?.structure && Array.isArray(extSeo.headings.structure) && extSeo.headings.structure.length > 0 && (
         <div className="p-4 bg-blue-50 rounded-lg">
           <h3 className="font-medium mb-3 text-blue-800">現在の見出し構造</h3>
           <ul className="text-sm space-y-1 font-mono">
