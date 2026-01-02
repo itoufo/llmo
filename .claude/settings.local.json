@@ -16,7 +16,8 @@
       "Bash(netlify link:*)",
       "WebFetch(domain:eigobu.jp)",
       "Bash(curl:*)",
-      "Bash(supabase functions deploy:*)"
+      "Bash(supabase functions deploy:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
