@@ -288,8 +288,38 @@ serve(async (req) => {
     })
   } catch (error: any) {
     console.error('[analyze] Error:', error)
-    return new Response(JSON.stringify({ error: error.message || 'Analysis failed' }), {
-      status: 500,
+    
+    // エラーの種類に応じて適切なステータスコードとメッセージを返す
+    let status = 500
+    let message = 'Analysis failed'
+    
+    if (error.message === 'PAGE_NOT_FOUND') {
+      status = 404
+      message = 'ページが見つかりません。URLを確認してください。'
+    } else if (error.message === 'UNAUTHORIZED') {
+      status = 401
+      message = 'このページへのアクセスには認証が必要です。'
+    } else if (error.message === 'FORBIDDEN') {
+      status = 403
+      message = 'このページへのアクセスが拒否されました。'
+    } else if (error.message === 'SERVER_ERROR') {
+      status = 502
+      message = 'サーバーエラーが発生しました。しばらく待ってから再試行してください。'
+    } else if (error.message?.startsWith('HTTP_ERROR_')) {
+      status = 400
+      message = `ページの取得に失敗しました。(${error.message})`
+    } else if (error.message?.includes('Failed to fetch content')) {
+      status = 400
+      message = 'ページのコンテンツを取得できませんでした。URLが正しいか確認してください。'
+    } else {
+      message = error.message || 'Analysis failed'
+    }
+    
+    return new Response(JSON.stringify({ 
+      error: message,
+      errorType: error.message 
+    }), {
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
@@ -306,6 +336,25 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     })
+    
+    // HTTPステータスコードチェック
+    if (!res.ok) {
+      console.log(`[fetch] Direct fetch failed with status: ${res.status}`)
+      
+      // 404, 401, 403などのエラーの場合は即座にエラーを投げる
+      if (res.status === 404) {
+        throw new Error('PAGE_NOT_FOUND')
+      } else if (res.status === 401) {
+        throw new Error('UNAUTHORIZED')
+      } else if (res.status === 403) {
+        throw new Error('FORBIDDEN')
+      } else if (res.status >= 500) {
+        throw new Error('SERVER_ERROR')
+      }
+      // その他のエラーはJinaで試行
+      throw new Error(`HTTP_ERROR_${res.status}`)
+    }
+    
     html = await res.text()
 
     // HTMLからテキスト抽出
@@ -321,6 +370,11 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
       return { html, content }
     }
   } catch (e) {
+    const error = e as Error
+    // 特定のエラーの場合は再試行せずに即座に終了
+    if (['PAGE_NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN', 'SERVER_ERROR'].includes(error.message)) {
+      throw error
+    }
     console.log('[fetch] Direct fetch failed, trying Jina...')
   }
 
@@ -329,7 +383,19 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
     headers: { 'Accept': 'text/plain' }
   })
 
+  // Jinaのレスポンスもステータスチェック
   if (!jinaRes.ok) {
+    console.log(`[fetch] Jina fetch failed with status: ${jinaRes.status}`)
+    
+    if (jinaRes.status === 404) {
+      throw new Error('PAGE_NOT_FOUND')
+    } else if (jinaRes.status === 401) {
+      throw new Error('UNAUTHORIZED')
+    } else if (jinaRes.status === 403) {
+      throw new Error('FORBIDDEN')
+    } else if (jinaRes.status >= 500) {
+      throw new Error('SERVER_ERROR')
+    }
     throw new Error(`Failed to fetch content: ${jinaRes.status}`)
   }
 

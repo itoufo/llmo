@@ -63,12 +63,33 @@ export function UrlForm({ onResult, getCachedResult }: Props) {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to analyze')
+        // ステータスコードに応じたエラーメッセージ
+        let errorMessage = data.error || 'Failed to analyze'
+        
+        // エラータイプに応じたより詳細なメッセージ
+        if (res.status === 404) {
+          errorMessage = '❌ ページが見つかりません。URLを確認してください。'
+        } else if (res.status === 401) {
+          errorMessage = '🔐 このページへのアクセスには認証が必要です。'
+        } else if (res.status === 403) {
+          errorMessage = '⛔ このページへのアクセスが拒否されました。'
+        } else if (res.status === 502) {
+          errorMessage = '🔧 サーバーエラーが発生しました。しばらく待ってから再試行してください。'
+        } else if (data.error) {
+          errorMessage = `⚠️ ${data.error}`
+        }
+        
+        throw new Error(errorMessage)
       }
 
       onResult(data, false)
     } catch (err: any) {
-      setError(err.message)
+      // ネットワークエラーなどの場合
+      if (err.message.includes('Failed to fetch')) {
+        setError('🌐 ネットワークエラーが発生しました。インターネット接続を確認してください。')
+      } else {
+        setError(err.message)
+      }
     } finally {
       setLoading(false)
     }
