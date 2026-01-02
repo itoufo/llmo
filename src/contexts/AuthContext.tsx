@@ -41,8 +41,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // セッション変更を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (session?.user) {
+          // 新規サインイン時（Googleログインなど）でプロファイル作成
+          if (event === 'SIGNED_IN') {
+            try {
+              await supabase.rpc('handle_new_user', {
+                user_id: session.user.id,
+                user_email: session.user.email || '',
+                user_metadata: session.user.user_metadata || {}
+              })
+            } catch (rpcError) {
+              console.error('Failed to create user profile:', rpcError)
+            }
+          }
           await loadUserData(session.user, session)
         } else {
           setState({
@@ -101,13 +113,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // サインアップ
   async function signUp(email: string, password: string, name?: string) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name },
       },
     })
+    
+    // ユーザー作成成功時、プロファイルとテナントを作成
+    if (data?.user && !error) {
+      try {
+        await supabase.rpc('handle_new_user', {
+          user_id: data.user.id,
+          user_email: email,
+          user_metadata: { name: name || email }
+        })
+      } catch (rpcError) {
+        console.error('Failed to create user profile:', rpcError)
+      }
+    }
+    
     return { error: error as Error | null }
   }
 
