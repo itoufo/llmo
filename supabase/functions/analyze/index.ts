@@ -1,7 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import OpenAI from 'https://esm.sh/openai@4'
 import { analyzeAdvancedSeo } from './seo-advanced.ts'
+import { analyzeSEO } from './seo-analyzer.ts'
+import { evaluateWithLLM } from './evaluator.ts'
+import { AnalysisResult } from './types.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,7 +82,12 @@ serve(async (req) => {
 
     // 2. SEO診断（HTMLから抽出）
     console.log('[analyze] Analyzing SEO...')
-    const seoResult = await analyzeSEO(html, url, content)
+    const seoResult = analyzeSEO(html)
+    
+    // 2.5. Advanced SEO診断
+    console.log('[analyze] Analyzing Advanced SEO...')
+    const advancedSeoResult = await analyzeAdvancedSeo(html, url)
+    seoResult.advancedSeo = advancedSeoResult
 
     // 3. LLM評価（LLMO + SEOコメント）
     console.log('[analyze] Evaluating with LLM...')
@@ -284,8 +291,13 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
   return { html, content }
 }
 
-// SEO診断関数 - HTMLフィードバック付き
-async function analyzeSEO(html: string, url: string, content: string) {
+// 削除: analyzeSEO関数は seo-analyzer.ts に移動済み
+// 削除: evaluateWithLLM関数は evaluator.ts に移動済み
+
+// ========== 以下、削除対象の古いコード（1022行から295行に削減） ==========
+// TODO: 次のコミットで完全削除
+/*
+async function analyzeSEO_OLD(html: string, url: string, content: string) {
   const result = {
     title: { score: 0, value: '', issues: [] as string[], suggestions: [] as string[], htmlFix: '' },
     meta: { score: 0, description: '', keywords: '', issues: [] as string[], suggestions: [] as string[], htmlFix: '' },
@@ -1020,3 +1032,4 @@ ${seoSummary}
 
   throw new Error(`LLM failed after retries: ${lastError?.message}`)
 }
+*/
