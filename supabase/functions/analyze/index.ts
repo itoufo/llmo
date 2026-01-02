@@ -112,8 +112,8 @@ serve(async (req) => {
       }
     }
 
-    // 4. スコア計算
-    const llmoOverall = Math.round(
+    // 4. スコア計算（LLMが提供した値を優先的に使用）
+    const llmoOverall = llmResult.overallScores?.llmoOverall || Math.round(
       (llmResult.aiCitation.score +
         llmResult.questionFit.score +
         llmResult.coverage.score +
@@ -121,8 +121,8 @@ serve(async (req) => {
         llmResult.eeat.score) / 5
     )
 
-    // Advanced SEOスコアを使用（よりdetailedな評価）
-    const seoOverall = seoResult.seoOverallScore || Math.round(
+    // LLMが計算したSEOスコアを使用（フォールバックあり）
+    const seoOverall = llmResult.overallScores?.seoOverall || seoResult.seoOverallScore || Math.round(
       (seoResult.title.score +
         seoResult.meta.score +
         seoResult.headings.score +
@@ -162,6 +162,7 @@ serve(async (req) => {
       improvements: llmResult.improvements || [],
       questions: llmResult.questions,
       seo: seoResult,
+      scoreBreakdowns: llmResult.overallScores || null,
       details: {
         aiCitationComment: llmResult.aiCitation.comment,
         missingConcepts: llmResult.coverage.missing,
@@ -860,6 +861,34 @@ ${seoSummary}
     "uniqueValue": {
       "score": 数値(0-100),
       "uniqueAspects": ["独自性のある要素1", "要素2"]
+    }
+  },
+  "overallScores": {
+    "llmoOverall": 数値(0-100),
+    "llmoBreakdown": {
+      "aiCitation": 数値,
+      "questionFit": 数値,
+      "coverage": 数値,
+      "structure": 数値,
+      "eeat": 数値,
+      "calculation": "各項目の点数と計算過程の説明"
+    },
+    "seoOverall": 数値(0-100),
+    "seoBreakdown": {
+      "title": 数値,
+      "meta": 数値,
+      "headings": 数値,
+      "images": 数値,
+      "keywords": 数値,
+      "calculation": "各項目の点数と計算過程の説明"
+    },
+    "advancedSeoOverall": 数値(0-100),
+    "advancedSeoBreakdown": {
+      "technical": 数値,
+      "performance": 数値,
+      "content": 数値,
+      "userExperience": 数値,
+      "calculation": "各項目の重みと計算過程の説明"
     }
   },
   "advancedSeoScores": {
