@@ -247,7 +247,14 @@ export async function analyzeAdvancedSeo(html: string, url: string): Promise<Adv
     .replace(/\s+/g, ' ')
     .trim()
   
-  const wordCount = textContent.split(/\s+/).length
+  // 日本語と英語両方に対応した文字数カウント
+  // 日本語: 文字数をカウント（句読点や記号を除く）
+  // 英語: 単語数をカウント
+  const japaneseChars = (textContent.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length
+  const englishWords = (textContent.match(/[a-zA-Z]+/g) || []).length
+  
+  // 日本語が主体の場合は文字数、英語が主体の場合は単語数を使用
+  const wordCount = japaneseChars > englishWords ? japaneseChars : textContent.split(/\s+/).length
   result.contentSeo.items.wordCount.value = wordCount
   
   // 文字数評価はLLMが完全に決定するため、デフォルトは'thin'

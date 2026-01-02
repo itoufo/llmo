@@ -871,7 +871,15 @@ ${seoSummary}
       "coverage": 数値,
       "structure": 数値,
       "eeat": 数値,
-      "calculation": "各項目の点数と計算過程の説明"
+      "calculation": "例: (20 + 15 + 18 + 22 + 15) / 5 = 18 → 総合18点",
+      "detailCalculation": {
+        "aiCitation": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "questionFit": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "coverage": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "structure": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "eeat": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "total": 数値
+      }
     },
     "seoOverall": 数値(0-100),
     "seoBreakdown": {
@@ -880,7 +888,15 @@ ${seoSummary}
       "headings": 数値,
       "images": 数値,
       "keywords": 数値,
-      "calculation": "各項目の点数と計算過程の説明"
+      "calculation": "例: (80 + 70 + 60 + 50 + 65) / 5 = 65 → 総合65点",
+      "detailCalculation": {
+        "title": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "meta": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "headings": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "images": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "keywords": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "total": 数値
+      }
     },
     "advancedSeoOverall": 数値(0-100),
     "advancedSeoBreakdown": {
@@ -888,7 +904,14 @@ ${seoSummary}
       "performance": 数値,
       "content": 数値,
       "userExperience": 数値,
-      "calculation": "各項目の重みと計算過程の説明"
+      "calculation": "例: (75 + 80 + 90 + 70) / 4 = 78.75 → 総合79点",
+      "detailCalculation": {
+        "technical": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "performance": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "content": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "userExperience": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "total": 数値
+      }
     }
   },
   "advancedSeoScores": {
@@ -927,6 +950,15 @@ ${seoSummary}
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         console.log(`[analyze] OpenAI ${model} attempt ${attempt}/3`)
+        
+        // リクエストログ
+        console.log('[analyze] LLM Request:', {
+          model,
+          promptLength: prompt.length,
+          promptPreview: prompt.substring(0, 500) + '...',
+          maxTokens: 16000
+        })
+        
         const res = await openai.chat.completions.create({
           model,
           messages: [{ role: 'user', content: prompt }],
@@ -950,6 +982,20 @@ ${seoSummary}
 
         try {
           const parsedResult = JSON.parse(content)
+          
+          // レスポンスログ
+          console.log('[analyze] LLM Response:', {
+            model,
+            responseLength: content.length,
+            hasOverallScores: !!parsedResult.overallScores,
+            hasAdvancedSeoScores: !!parsedResult.advancedSeoScores,
+            scores: {
+              llmoOverall: parsedResult.overallScores?.llmoOverall,
+              seoOverall: parsedResult.overallScores?.seoOverall,
+              advancedSeoOverall: parsedResult.overallScores?.advancedSeoOverall
+            }
+          })
+          
           const usage: LLMUsage = {
             model,
             promptTokens: res.usage?.prompt_tokens || 0,
