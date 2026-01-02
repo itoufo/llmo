@@ -1,4 +1,4 @@
-import { User, Mail, Save } from 'lucide-react'
+import { Mail, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 interface ProfileSettingsData {

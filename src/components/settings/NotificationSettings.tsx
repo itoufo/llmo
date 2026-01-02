@@ -1,4 +1,4 @@
-import { Bell, Save } from 'lucide-react'
+import { Save } from 'lucide-react'
 
 interface NotificationData {
   email_weekly_report: boolean

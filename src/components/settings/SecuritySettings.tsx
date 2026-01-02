@@ -1,4 +1,4 @@
-import { Shield, Key, Smartphone, Save } from 'lucide-react'
+import { Shield, Key, Smartphone } from 'lucide-react'
 
 interface Props {
   loading: boolean
@@ -6,7 +6,7 @@ interface Props {
   setMessage: React.Dispatch<React.SetStateAction<{ type: 'success' | 'error', text: string } | null>>
 }
 
-export function SecuritySettings({ loading, setLoading, setMessage }: Props) {
+export function SecuritySettings({ loading }: Props) {
   return (
     <div className="space-y-6">
       <div>
