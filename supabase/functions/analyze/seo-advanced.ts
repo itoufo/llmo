@@ -284,7 +284,11 @@ export async function analyzeAdvancedSeo(html: string, url: string): Promise<Adv
   // Calculate scores
   result.technicalSeo.score = calculateTechnicalScore(result.technicalSeo.items)
   result.performanceSeo.score = calculatePerformanceScore(result.performanceSeo.items)
-  result.contentSeo.score = calculateContentScore(result.contentSeo.items)
+  
+  const contentScoreResult = calculateContentScore(result.contentSeo.items)
+  result.contentSeo.score = contentScoreResult.score
+  result.contentSeo.scoreBreakdown = contentScoreResult.breakdown
+  
   result.userExperience.score = calculateUXScore(result.userExperience.items)
 
   return result
@@ -335,19 +339,57 @@ function calculatePerformanceScore(items: any): number {
   return Math.max(0, score)
 }
 
-function calculateContentScore(items: any): number {
+function calculateContentScore(items: any): { score: number, breakdown: any } {
   let score = 100
+  const breakdown = {
+    baseScore: 100,
+    deductions: [],
+    calculations: []
+  }
   
-  if (items.wordCount.rating === 'thin') score -= 30
-  else if (items.wordCount.rating === 'comprehensive' && items.wordCount.value > 5000) score -= 5
+  // 文字数評価
+  if (items.wordCount.rating === 'thin') {
+    score -= 30
+    breakdown.deductions.push({ reason: '文字数が少なすぎる', penalty: -30, current: score })
+  } else if (items.wordCount.rating === 'comprehensive' && items.wordCount.value > 5000) {
+    score -= 5
+    breakdown.deductions.push({ reason: '文字数が多すぎる（5000語超）', penalty: -5, current: score })
+  } else {
+    breakdown.calculations.push({ reason: `文字数: ${items.wordCount.value}語（${items.wordCount.rating}）`, penalty: 0 })
+  }
   
-  if (items.multimedia.images === 0) score -= 15
-  if (items.multimedia.videos === 0) score -= 5
+  // マルチメディア評価
+  if (items.multimedia.images === 0) {
+    score -= 15
+    breakdown.deductions.push({ reason: '画像がない', penalty: -15, current: score })
+  } else {
+    breakdown.calculations.push({ reason: `画像: ${items.multimedia.images}個`, penalty: 0 })
+  }
   
-  if (items.lists.ordered === 0 && items.lists.unordered === 0) score -= 10
-  if (items.tables.count > 0 && items.tables.withCaption === 0) score -= 5
+  if (items.multimedia.videos === 0) {
+    score -= 5
+    breakdown.deductions.push({ reason: '動画がない', penalty: -5, current: score })
+  } else {
+    breakdown.calculations.push({ reason: `動画: ${items.multimedia.videos}個`, penalty: 0 })
+  }
   
-  return Math.max(0, score)
+  // 構造化評価
+  if (items.lists.ordered === 0 && items.lists.unordered === 0) {
+    score -= 10
+    breakdown.deductions.push({ reason: 'リスト構造がない', penalty: -10, current: score })
+  } else {
+    breakdown.calculations.push({ reason: `リスト: 順序${items.lists.ordered}個、箇条書き${items.lists.unordered}個`, penalty: 0 })
+  }
+  
+  if (items.tables.count > 0 && items.tables.withCaption === 0) {
+    score -= 5
+    breakdown.deductions.push({ reason: 'テーブルにキャプションがない', penalty: -5, current: score })
+  } else if (items.tables.count > 0) {
+    breakdown.calculations.push({ reason: `テーブル: ${items.tables.count}個（キャプション付き${items.tables.withCaption}個）`, penalty: 0 })
+  }
+  
+  const finalScore = Math.max(0, score)
+  return { score: finalScore, breakdown }
 }
 
 function calculateUXScore(items: any): number {

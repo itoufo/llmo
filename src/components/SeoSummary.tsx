@@ -282,7 +282,67 @@ export function SeoSummary({ seo, seoOverall }: Props) {
             <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
               <span className="mr-2">📝</span>
               コンテンツSEO（{extSeo.advancedSeo.contentSeo.score}点）
+              <button
+                onClick={() => toggleExpand('contentSeoBreakdown')}
+                className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              >
+                {expandedItems.has('contentSeoBreakdown') ? '詳細を閉じる' : 'スコア詳細'}
+              </button>
             </h4>
+            
+            {/* スコア計算詳細 */}
+            {expandedItems.has('contentSeoBreakdown') && extSeo.advancedSeo.contentSeo.scoreBreakdown && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <h5 className="font-semibold text-blue-900 mb-3 flex items-center">
+                  <span className="mr-2">🧮</span>
+                  スコア計算の詳細
+                </h5>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between p-2 bg-white rounded">
+                    <span>基本スコア</span>
+                    <span className="font-bold text-blue-700">{extSeo.advancedSeo.contentSeo.scoreBreakdown.baseScore}点</span>
+                  </div>
+                  
+                  {/* 加点・減点項目 */}
+                  {extSeo.advancedSeo.contentSeo.scoreBreakdown.calculations?.map((calc: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-2 bg-green-50 rounded text-green-800">
+                      <span>✅ {calc.reason}</span>
+                      <span className="font-medium">減点なし</span>
+                    </div>
+                  ))}
+                  
+                  {/* 減点項目 */}
+                  {extSeo.advancedSeo.contentSeo.scoreBreakdown.deductions?.map((deduction: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-2 bg-red-50 rounded text-red-800">
+                      <span>❌ {deduction.reason}</span>
+                      <span className="font-medium">{deduction.penalty}点</span>
+                    </div>
+                  ))}
+                  
+                  {/* LLM調整 */}
+                  {extSeo.advancedSeo.contentSeo.scoreBreakdown.llmAdjustments?.map((adjustment: any, i: number) => (
+                    <div key={i} className="p-3 bg-purple-50 rounded border border-purple-200">
+                      <div className="flex items-center justify-between text-purple-800">
+                        <span>🤖 LLMによる動的調整</span>
+                        <span className="font-bold">{adjustment.adjustment > 0 ? '+' : ''}{adjustment.adjustment}点</span>
+                      </div>
+                      <div className="text-xs text-purple-600 mt-1">
+                        理由: {adjustment.reason}
+                      </div>
+                      <div className="text-xs text-purple-600">
+                        {adjustment.originalScore}点 → {adjustment.finalScore}点
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="flex items-center justify-between p-3 bg-gray-100 rounded font-bold border-t-2 border-gray-300">
+                    <span>最終スコア</span>
+                    <span className="text-xl text-gray-900">{extSeo.advancedSeo.contentSeo.score}点</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

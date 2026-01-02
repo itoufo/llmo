@@ -89,6 +89,9 @@ serve(async (req) => {
     // 3.5. LLM評価結果をAdvanced SEOに統合
     console.log('[analyze] Integrating LLM results with Advanced SEO...')
     if (llmResult.contentQuality?.wordCountEvaluation && seoResult.advancedSeo) {
+      // スコア調整の詳細を記録
+      const originalScore = seoResult.advancedSeo.contentSeo.score
+      
       // LLMの文字数評価をAdvanced SEOに反映
       seoResult.advancedSeo.contentSeo.items.wordCount.rating = llmResult.contentQuality.wordCountEvaluation.rating
       
@@ -100,12 +103,37 @@ serve(async (req) => {
           const currentWordCount = seoResult.advancedSeo.contentSeo.items.wordCount.value
           const ratio = currentWordCount / targetWordCount
           let scoreAdjustment = 0
-          if (ratio < 0.5) scoreAdjustment = -30  // 目標の50%未満
-          else if (ratio < 0.8) scoreAdjustment = -15  // 目標の80%未満
-          else if (ratio > 2.0) scoreAdjustment = -10  // 目標の200%超
+          let adjustmentReason = ''
           
-          seoResult.advancedSeo.contentSeo.score = Math.max(0, Math.min(100, 
-            seoResult.advancedSeo.contentSeo.score + scoreAdjustment))
+          if (ratio < 0.5) {
+            scoreAdjustment = -30
+            adjustmentReason = `目標文字数の${Math.round(ratio * 100)}%（${currentWordCount}/${targetWordCount}語）`
+          } else if (ratio < 0.8) {
+            scoreAdjustment = -15
+            adjustmentReason = `目標文字数の${Math.round(ratio * 100)}%（${currentWordCount}/${targetWordCount}語）`
+          } else if (ratio > 2.0) {
+            scoreAdjustment = -10
+            adjustmentReason = `目標文字数の${Math.round(ratio * 100)}%（長すぎる）`
+          }
+          
+          const adjustedScore = Math.max(0, Math.min(100, originalScore + scoreAdjustment))
+          seoResult.advancedSeo.contentSeo.score = adjustedScore
+          
+          // 調整詳細を記録
+          if (!seoResult.advancedSeo.contentSeo.scoreBreakdown) {
+            seoResult.advancedSeo.contentSeo.scoreBreakdown = { baseScore: originalScore, deductions: [], calculations: [] }
+          }
+          
+          if (scoreAdjustment !== 0) {
+            seoResult.advancedSeo.contentSeo.scoreBreakdown.llmAdjustments = [{
+              reason: adjustmentReason,
+              adjustment: scoreAdjustment,
+              originalScore,
+              finalScore: adjustedScore,
+              targetWordCount,
+              actualWordCount: currentWordCount
+            }]
+          }
         }
       }
     }
