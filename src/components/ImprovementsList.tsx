@@ -32,16 +32,21 @@ const typeConfig = {
 }
 
 function ImprovementCard({ improvement, index }: { improvement: Improvement; index: number }) {
-  const priority = priorityConfig[improvement.priority] || priorityConfig.medium // デフォルト値を設定
+  // Ensure priority always has a valid value
+  const validPriority = improvement.priority === 'high' || improvement.priority === 'medium' || improvement.priority === 'low' 
+    ? improvement.priority 
+    : 'medium'
+  const priority = priorityConfig[validPriority]
+  
   const category = categoryConfig[improvement.category] || { label: improvement.category, icon: '📌' }
   const type = improvement.type ? typeConfig[improvement.type] : null
 
   return (
-    <div className={`rounded-2xl border-2 ${priority?.border || 'border-gray-200'} ${priority?.bg || 'bg-gray-50'} p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}>
+    <div className={`rounded-2xl border-2 ${priority.border} ${priority.bg} p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5`}>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${priority?.text || 'text-gray-700'} bg-white shadow-sm`}>
-            優先度: {priority?.label || '中'}
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${priority.text} bg-white shadow-sm`}>
+            優先度: {priority.label}
           </span>
           {type && (
             <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${type.bg} ${type.text} border ${type.border}`}>
