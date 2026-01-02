@@ -19,6 +19,12 @@ interface ExtendedSEOResult extends SEOResult {
   structured: SEOResult['structured'] & { htmlFix?: string }
   ogp?: { hasOgp: boolean; issues: string[]; htmlFix?: string }
   headHtml?: string
+  advancedSeo?: {
+    technicalSeo: { score: number; items: any }
+    performanceSeo: { score: number; items: any }
+    contentSeo: { score: number; items: any }
+    userExperience: { score: number; items: any }
+  }
 }
 
 export function SeoSummary({ seo, seoOverall }: Props) {
@@ -123,6 +129,81 @@ export function SeoSummary({ seo, seoOverall }: Props) {
               {extSeo.headHtml}
             </pre>
           )}
+        </div>
+      )}
+
+      {/* Advanced SEO スコア */}
+      {extSeo.advancedSeo && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+          <h3 className="text-lg font-bold text-indigo-800 mb-4 flex items-center">
+            <span className="mr-2">🔍</span>
+            詳細SEO診断スコア
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="text-sm text-gray-600 mb-1">技術的SEO</div>
+              <div className={`text-2xl font-bold ${extSeo.advancedSeo.technicalSeo.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.technicalSeo.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {extSeo.advancedSeo.technicalSeo.score}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {!extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists && '❌ Canonical '}
+                {!extSeo.advancedSeo.technicalSeo.items.jsonLd.exists && '❌ JSON-LD '}
+                {!extSeo.advancedSeo.technicalSeo.items.openGraph.complete && '⚠️ OGP不完全'}
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="text-sm text-gray-600 mb-1">パフォーマンス</div>
+              <div className={`text-2xl font-bold ${extSeo.advancedSeo.performanceSeo.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.performanceSeo.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {extSeo.advancedSeo.performanceSeo.score}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'too-heavy' && '⚠️ HTMLサイズ大 '}
+                {extSeo.advancedSeo.performanceSeo.items.inlineJS.excessive && '⚠️ インラインJS多'}
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="text-sm text-gray-600 mb-1">コンテンツSEO</div>
+              <div className={`text-2xl font-bold ${extSeo.advancedSeo.contentSeo.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.contentSeo.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {extSeo.advancedSeo.contentSeo.score}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'thin' && '❌ コンテンツ少 '}
+                {extSeo.advancedSeo.contentSeo.items.multimedia.images === 0 && '❌ 画像なし'}
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="text-sm text-gray-600 mb-1">ユーザー体験</div>
+              <div className={`text-2xl font-bold ${extSeo.advancedSeo.userExperience.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.userExperience.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {extSeo.advancedSeo.userExperience.score}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {!extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs && '❌ パンくず '}
+                {!extSeo.advancedSeo.userExperience.items.accessibility.skipLinks && '❌ スキップリンク'}
+              </div>
+            </div>
+          </div>
+          
+          {/* 詳細な問題点リスト */}
+          <div className="mt-4 p-4 bg-white rounded-lg border border-indigo-100">
+            <h4 className="font-semibold text-gray-800 mb-2">主な改善ポイント</h4>
+            <ul className="text-sm space-y-1 text-gray-600">
+              {!extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists && (
+                <li>🔧 Canonicalタグを設定して重複コンテンツを防ぐ</li>
+              )}
+              {!extSeo.advancedSeo.technicalSeo.items.jsonLd.exists && (
+                <li>🔧 構造化データ（JSON-LD）を追加してリッチスニペット表示を狙う</li>
+              )}
+              {extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'too-heavy' && (
+                <li>⚡ HTMLサイズを削減してページ読み込み速度を改善</li>
+              )}
+              {extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'thin' && (
+                <li>📝 コンテンツ量を増やして情報の充実度を高める（推奨: 1000語以上）</li>
+              )}
+              {!extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs && (
+                <li>🧭 パンくずリストを追加してナビゲーションを改善</li>
+              )}
+            </ul>
+          </div>
         </div>
       )}
 

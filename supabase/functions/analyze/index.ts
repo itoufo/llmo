@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import OpenAI from 'https://esm.sh/openai@4'
+import { analyzeAdvancedSeo } from './seo-advanced.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -527,6 +528,29 @@ function analyzeSEO(html: string, url: string, content: string) {
 
   // 推奨<head>タグの生成
   result.headHtml = generateRecommendedHead(result, url, suggestedTitle, suggestedDescription)
+
+  // Advanced SEO分析を追加
+  const advancedSeo = await analyzeAdvancedSeo(html, url)
+  result.advancedSeo = advancedSeo
+
+  // SEOスコアをAdvanced SEOを含めて再計算（より厳格に）
+  const basicSeoScore = Math.round(
+    (result.title.score * 0.15 +
+     result.meta.score * 0.15 +
+     result.headings.score * 0.15 +
+     result.images.score * 0.10 +
+     result.performance.score * 0.05) / 0.6
+  )
+  
+  const advancedSeoScore = Math.round(
+    (advancedSeo.technicalSeo.score * 0.25 +
+     advancedSeo.performanceSeo.score * 0.20 +
+     advancedSeo.contentSeo.score * 0.30 +
+     advancedSeo.userExperience.score * 0.25)
+  )
+  
+  // 基本SEOとAdvanced SEOの重み付け平均（Advanced SEOを重視）
+  result.seoOverallScore = Math.round(basicSeoScore * 0.3 + advancedSeoScore * 0.7)
 
   return result
 }
