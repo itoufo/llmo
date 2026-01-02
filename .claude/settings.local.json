@@ -14,7 +14,8 @@
       "Bash(netlify deploy:*)",
       "Bash(netlify sites:list:*)",
       "Bash(netlify link:*)",
-      "WebFetch(domain:eigobu.jp)"
+      "WebFetch(domain:eigobu.jp)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
