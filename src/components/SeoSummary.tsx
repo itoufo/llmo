@@ -194,7 +194,23 @@ export function SeoSummary({ seo, seoOverall }: Props) {
             <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
               <span className="mr-2">🔧</span>
               技術的SEO（{extSeo.advancedSeo.technicalSeo.score}点）
+              <button
+                onClick={() => toggleExpand('technicalSeoBreakdown')}
+                className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              >
+                {expandedItems.has('technicalSeoBreakdown') ? '詳細を閉じる' : 'スコア詳細'}
+              </button>
             </h4>
+            
+            {/* スコア根拠 */}
+            {expandedItems.has('technicalSeoBreakdown') && (extSeo.advancedSeo as any).scoreReasoning?.technical && (
+              <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="text-sm text-blue-900">
+                  <div className="font-semibold mb-1">🤖 LLMスコア算出根拠:</div>
+                  <div className="whitespace-pre-wrap">{(extSeo.advancedSeo as any).scoreReasoning.technical}</div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -244,7 +260,23 @@ export function SeoSummary({ seo, seoOverall }: Props) {
             <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
               <span className="mr-2">⚡</span>
               パフォーマンスSEO（{extSeo.advancedSeo.performanceSeo.score}点）
+              <button
+                onClick={() => toggleExpand('performanceSeoBreakdown')}
+                className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              >
+                {expandedItems.has('performanceSeoBreakdown') ? '詳細を閉じる' : 'スコア詳細'}
+              </button>
             </h4>
+            
+            {/* スコア根拠 */}
+            {expandedItems.has('performanceSeoBreakdown') && (extSeo.advancedSeo as any).scoreReasoning?.performance && (
+              <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="text-sm text-blue-900">
+                  <div className="font-semibold mb-1">🤖 LLMスコア算出根拠:</div>
+                  <div className="whitespace-pre-wrap">{(extSeo.advancedSeo as any).scoreReasoning.performance}</div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -320,7 +352,25 @@ export function SeoSummary({ seo, seoOverall }: Props) {
                     </div>
                   ))}
                   
-                  {/* LLM調整 */}
+                  {/* LLMによるスコア決定 */}
+                  {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.llmScore && (
+                    <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                      <div className="flex items-center justify-between text-purple-800 mb-2">
+                        <span className="font-semibold">🤖 LLMスコア決定</span>
+                        <span className="font-bold text-lg">
+                          {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.baseScore}点 → {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.llmScore}点
+                        </span>
+                      </div>
+                      {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.llmReasoning && (
+                        <div className="text-xs text-purple-700 space-y-1 bg-white/70 p-2 rounded">
+                          <div className="font-semibold mb-1">スコア算出根拠:</div>
+                          <div className="whitespace-pre-wrap">{(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.llmReasoning}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* 旧LLM調整（互換性のため残す） */}
                   {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.llmAdjustments?.map((adjustment: any, i: number) => (
                     <div key={i} className="p-3 bg-purple-50 rounded border border-purple-200">
                       <div className="flex items-center justify-between text-purple-800">
@@ -380,7 +430,23 @@ export function SeoSummary({ seo, seoOverall }: Props) {
             <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
               <span className="mr-2">👥</span>
               ユーザー体験（{extSeo.advancedSeo.userExperience.score}点）
+              <button
+                onClick={() => toggleExpand('uxSeoBreakdown')}
+                className="ml-2 text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              >
+                {expandedItems.has('uxSeoBreakdown') ? '詳細を閉じる' : 'スコア詳細'}
+              </button>
             </h4>
+            
+            {/* スコア根拠 */}
+            {expandedItems.has('uxSeoBreakdown') && (extSeo.advancedSeo as any).scoreReasoning?.ux && (
+              <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="text-sm text-blue-900">
+                  <div className="font-semibold mb-1">🤖 LLMスコア算出根拠:</div>
+                  <div className="whitespace-pre-wrap">{(extSeo.advancedSeo as any).scoreReasoning.ux}</div>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
