@@ -86,55 +86,24 @@ serve(async (req) => {
     console.log('[analyze] Evaluating with LLM...')
     const { result: llmResult, usage } = await evaluateWithLLM(content, seoResult)
 
-    // 3.5. LLM評価結果をAdvanced SEOに統合
+    // 3.5. LLM評価結果をAdvanced SEOに統合（LLMが全スコアを決定）
     console.log('[analyze] Integrating LLM results with Advanced SEO...')
-    if (llmResult.contentQuality?.wordCountEvaluation && seoResult.advancedSeo) {
-      // スコア調整の詳細を記録
-      const originalScore = seoResult.advancedSeo.contentSeo.score
+    if (llmResult.advancedSeoScores && seoResult.advancedSeo) {
+      // LLMが算出した全スコアを直接適用
+      seoResult.advancedSeo.technicalSeo.score = llmResult.advancedSeoScores.technicalSeo || 50
+      seoResult.advancedSeo.performanceSeo.score = llmResult.advancedSeoScores.performanceSeo || 50
+      seoResult.advancedSeo.contentSeo.score = llmResult.advancedSeoScores.contentSeo || 50
+      seoResult.advancedSeo.userExperience.score = llmResult.advancedSeoScores.userExperience || 50
       
-      // LLMの文字数評価をAdvanced SEOに反映
-      seoResult.advancedSeo.contentSeo.items.wordCount.rating = llmResult.contentQuality.wordCountEvaluation.rating
+      // スコアの根拠を記録
+      if (llmResult.advancedSeoScores.reasoning) {
+        seoResult.advancedSeo.scoreReasoning = llmResult.advancedSeoScores.reasoning
+      }
       
-      // LLMの推奨に基づいてAdvanced SEOの評価も更新
-      if (llmResult.advancedSeoIntegrated?.contentSeoRecommendations) {
-        const targetWordCount = llmResult.advancedSeoIntegrated.contentSeoRecommendations.targetWordCount
-        if (targetWordCount) {
-          // 目標文字数に基づいてスコアを動的調整
-          const currentWordCount = seoResult.advancedSeo.contentSeo.items.wordCount.value
-          const ratio = currentWordCount / targetWordCount
-          let scoreAdjustment = 0
-          let adjustmentReason = ''
-          
-          if (ratio < 0.5) {
-            scoreAdjustment = -30
-            adjustmentReason = `目標文字数の${Math.round(ratio * 100)}%（${currentWordCount}/${targetWordCount}語）`
-          } else if (ratio < 0.8) {
-            scoreAdjustment = -15
-            adjustmentReason = `目標文字数の${Math.round(ratio * 100)}%（${currentWordCount}/${targetWordCount}語）`
-          } else if (ratio > 2.0) {
-            scoreAdjustment = -10
-            adjustmentReason = `目標文字数の${Math.round(ratio * 100)}%（長すぎる）`
-          }
-          
-          const adjustedScore = Math.max(0, Math.min(100, originalScore + scoreAdjustment))
-          seoResult.advancedSeo.contentSeo.score = adjustedScore
-          
-          // 調整詳細を記録
-          if (!seoResult.advancedSeo.contentSeo.scoreBreakdown) {
-            seoResult.advancedSeo.contentSeo.scoreBreakdown = { baseScore: originalScore, deductions: [], calculations: [] }
-          }
-          
-          if (scoreAdjustment !== 0) {
-            seoResult.advancedSeo.contentSeo.scoreBreakdown.llmAdjustments = [{
-              reason: adjustmentReason,
-              adjustment: scoreAdjustment,
-              originalScore,
-              finalScore: adjustedScore,
-              targetWordCount,
-              actualWordCount: currentWordCount
-            }]
-          }
-        }
+      // コンテンツSEOのブレークダウンを更新
+      if (seoResult.advancedSeo.contentSeo.scoreBreakdown) {
+        seoResult.advancedSeo.contentSeo.scoreBreakdown.llmScore = llmResult.advancedSeoScores.contentSeo
+        seoResult.advancedSeo.contentSeo.scoreBreakdown.llmReasoning = llmResult.advancedSeoScores.contentReasoning
       }
     }
 
@@ -781,21 +750,48 @@ ${seoSummary}
 - 専門性、経験、権威性、信頼性
 - 著者情報、参考文献、更新日などの有無
 
-## 7. Advanced SEO統合評価
-以下の項目を統合的に評価し、固定基準ではなくコンテンツ特性に応じた動的評価を実施：
+## 7. Advanced SEOスコアの直接算出（最重要）
+**固定IF文は使用せず、以下の基準に基づいてあなたがスコアを直接決定してください。**
 
-### 7-1. 技術的SEO評価
-- 現在のCanonical URL、構造化データ、OGPの状況を踏まえた改善優先度
-- 実装すべき技術的改善の具体的提案
+### 7-1. 技術的SEO（0-100点）
+以下の要素を総合的に判断して点数を決定：
+- **Canonical URL（15点配分）**: 存在・正確性・適切性
+- **構造化データJSON-LD（15点配分）**: 存在・妥当性・スキーマタイプの適切性  
+- **Open Graph（10点配分）**: 完全性・画像設定・説明の質
+- **Twitter Card（5点配分）**: 設定有無・カードタイプの適切性
+- **SSL/HTTPS（15点配分）**: 有効性・混合コンテンツの有無
+- **モバイルビューポート（15点配分）**: 設定有無・レスポンシブ対応
+- **その他（25点配分）**: 言語設定、文字コード、robots.txt、サイトマップ等
 
-### 7-2. コンテンツSEO動的評価
-- このトピック・業界に適したコンテンツ量の推奨値（固定1000語ではなく）
-- 必要な画像・メディアの種類と数量
-- 推奨するリスト・テーブル構造
+### 7-2. パフォーマンスSEO（0-100点）
+以下の要素を総合的に判断して点数を決定：
+- **HTMLサイズ（30点配分）**: 
+  - 100KB未満: 満点
+  - 100-300KB: 20-25点
+  - 300-500KB: 10-20点
+  - 500KB超: 0-10点
+- **インラインCSS/JS（20点配分）**: 適量なら満点、過剰なら減点
+- **外部リンク（25点配分）**: 適切な数とnofollow設定
+- **内部リンク（25点配分）**: サイト内導線の質、ブロークンリンクの有無
 
-### 7-3. ユーザー体験最適化
-- このページタイプに必要なナビゲーション要素
-- アクセシビリティの具体的改善点
+### 7-3. コンテンツSEO（0-100点）
+**コンテキストとトピックを考慮した動的評価：**
+- **文字数（40点配分）**: 
+  - ニュース記事: 300-800語が適切
+  - ブログ記事: 800-2000語が適切
+  - 詳細ガイド: 2000語以上が適切
+  - トピックの深さと読者層を考慮
+- **マルチメディア（20点配分）**: 
+  - 画像: コンテンツ量に応じた適切な数
+  - 動画: トピックによって必要性を判断
+- **構造化（20点配分）**: リスト、テーブル、見出し階層の適切性
+- **情報密度（20点配分）**: 無駄な文章がなく、価値ある情報の比率
+
+### 7-4. ユーザー体験（0-100点）
+以下の要素を総合的に判断して点数を決定：
+- **アクセシビリティ（40点配分）**: ARIA、スキップリンク、フォームラベル
+- **ナビゲーション（30点配分）**: パンくず、目次、検索機能の必要性判断
+- **読みやすさ（30点配分）**: フォントサイズ、行間、コントラスト等
 
 ## 8. 具体的な改善案（最重要）
 **LLMO改善案**、**SEO改善案**、**Advanced SEO改善案**を統合して、優先度の高い順に10-15個の改善案を提案：
@@ -861,20 +857,17 @@ ${seoSummary}
       "uniqueAspects": ["独自性のある要素1", "要素2"]
     }
   },
-  "advancedSeoIntegrated": {
-    "technicalSeoRecommendations": {
-      "canonicalUrl": {"needed": true/false, "priority": "high/medium/low", "reasoning": "理由"},
-      "structuredData": {"needed": true/false, "priority": "high/medium/low", "schemaType": "推奨スキーマタイプ"},
-      "openGraph": {"needed": true/false, "priority": "high/medium/low", "missingElements": ["欠けている要素"]}
-    },
-    "contentSeoRecommendations": {
-      "targetWordCount": 数値,
-      "imageRecommendations": {"count": 数値, "types": ["推奨画像タイプ"]},
-      "structureEnhancements": ["推奨構造改善1", "改善2"]
-    },
-    "userExperienceRecommendations": {
-      "navigationNeeds": ["必要なナビゲーション要素"],
-      "accessibilityImprovements": ["アクセシビリティ改善"]
+  "advancedSeoScores": {
+    "technicalSeo": 数値(0-100),
+    "performanceSeo": 数値(0-100),
+    "contentSeo": 数値(0-100),
+    "userExperience": 数値(0-100),
+    "contentReasoning": "コンテンツSEOスコアの詳細根拠（何点配分でどう判断したか）",
+    "reasoning": {
+      "technical": "技術的SEOスコアの根拠",
+      "performance": "パフォーマンスSEOスコアの根拠",
+      "content": "コンテンツSEOスコアの根拠（文字数、画像、構造など各要素の配点と判断）",
+      "ux": "ユーザー体験スコアの根拠"
     }
   },
   "improvements": [

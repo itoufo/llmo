@@ -295,115 +295,65 @@ export async function analyzeAdvancedSeo(html: string, url: string): Promise<Adv
 }
 
 function calculateTechnicalScore(items: any): number {
-  let score = 100
-  
-  if (!items.canonicalUrl.exists) score -= 10
-  else if (!items.canonicalUrl.correct) score -= 5
-  
-  if (!items.robots.exists) score -= 5
-  else if (items.robots.issues?.length > 0) score -= 10
-  
-  if (!items.ssl.enabled) score -= 15
-  if (items.ssl.mixed) score -= 10
-  
-  if (!items.mobileViewport.exists) score -= 15
-  if (!items.lang.exists) score -= 5
-  if (!items.charset.exists) score -= 5
-  
-  if (!items.openGraph.exists) score -= 10
-  else if (!items.openGraph.complete) score -= 5
-  
-  if (!items.twitterCard.exists) score -= 5
-  
-  if (!items.jsonLd.exists) score -= 10
-  else if (!items.jsonLd.valid) score -= 5
-  
-  return Math.max(0, score)
+  // LLMに完全委任 - 初期値50点（中立）
+  // 実際のスコアはLLMが以下の要素を総合的に判断：
+  // - Canonical URL、JSON-LD、Open Graph、Twitter Card
+  // - SSL/HTTPS、モバイルビューポート、言語設定、文字コード
+  // - robots.txt、サイトマップ
+  return 50
 }
 
 function calculatePerformanceScore(items: any): number {
-  let score = 100
-  
-  if (items.htmlSize.rating === 'heavy') score -= 10
-  else if (items.htmlSize.rating === 'too-heavy') score -= 20
-  
-  if (items.inlineCSS.excessive) score -= 10
-  if (items.inlineJS.excessive) score -= 10
-  
-  if (items.externalLinks.count > 50) score -= 10
-  if (items.externalLinks.nofollow === 0 && items.externalLinks.count > 10) score -= 5
-  
-  if (items.internalLinks.count < 3) score -= 10
-  if (items.internalLinks.broken > 0) score -= 15
-  
-  return Math.max(0, score)
+  // LLMに完全委任 - 初期値50点（中立）
+  // 実際のスコアはLLMが以下の要素を総合的に判断：
+  // - HTMLサイズ、インラインCSS/JS、外部リンク数
+  // - 内部リンク構造、ブロークンリンク
+  return 50
 }
 
 function calculateContentScore(items: any): { score: number, breakdown: any } {
-  let score = 100
+  // LLMに完全委任するため、固定スコア計算は行わない
+  // データ収集のみ実施して、初期値は50点（中立）
   const breakdown = {
-    baseScore: 100,
+    baseScore: 50,
     deductions: [],
-    calculations: []
+    calculations: [],
+    note: 'スコアはLLMが総合的に判断して決定します'
   }
   
-  // 文字数評価
-  if (items.wordCount.rating === 'thin') {
-    score -= 30
-    breakdown.deductions.push({ reason: '文字数が少なすぎる', penalty: -30, current: score })
-  } else if (items.wordCount.rating === 'comprehensive' && items.wordCount.value > 5000) {
-    score -= 5
-    breakdown.deductions.push({ reason: '文字数が多すぎる（5000語超）', penalty: -5, current: score })
-  } else {
-    breakdown.calculations.push({ reason: `文字数: ${items.wordCount.value}語（${items.wordCount.rating}）`, penalty: 0 })
+  // データ収集（表示用）
+  breakdown.calculations.push({ 
+    reason: `文字数: ${items.wordCount.value}語`, 
+    data: items.wordCount 
+  })
+  
+  breakdown.calculations.push({ 
+    reason: `画像: ${items.multimedia.images}個、動画: ${items.multimedia.videos}個`, 
+    data: items.multimedia 
+  })
+  
+  breakdown.calculations.push({ 
+    reason: `リスト: 順序${items.lists.ordered}個、箇条書き${items.lists.unordered}個`, 
+    data: items.lists 
+  })
+  
+  if (items.tables.count > 0) {
+    breakdown.calculations.push({ 
+      reason: `テーブル: ${items.tables.count}個（キャプション付き${items.tables.withCaption}個）`, 
+      data: items.tables 
+    })
   }
   
-  // マルチメディア評価
-  if (items.multimedia.images === 0) {
-    score -= 15
-    breakdown.deductions.push({ reason: '画像がない', penalty: -15, current: score })
-  } else {
-    breakdown.calculations.push({ reason: `画像: ${items.multimedia.images}個`, penalty: 0 })
-  }
-  
-  if (items.multimedia.videos === 0) {
-    score -= 5
-    breakdown.deductions.push({ reason: '動画がない', penalty: -5, current: score })
-  } else {
-    breakdown.calculations.push({ reason: `動画: ${items.multimedia.videos}個`, penalty: 0 })
-  }
-  
-  // 構造化評価
-  if (items.lists.ordered === 0 && items.lists.unordered === 0) {
-    score -= 10
-    breakdown.deductions.push({ reason: 'リスト構造がない', penalty: -10, current: score })
-  } else {
-    breakdown.calculations.push({ reason: `リスト: 順序${items.lists.ordered}個、箇条書き${items.lists.unordered}個`, penalty: 0 })
-  }
-  
-  if (items.tables.count > 0 && items.tables.withCaption === 0) {
-    score -= 5
-    breakdown.deductions.push({ reason: 'テーブルにキャプションがない', penalty: -5, current: score })
-  } else if (items.tables.count > 0) {
-    breakdown.calculations.push({ reason: `テーブル: ${items.tables.count}個（キャプション付き${items.tables.withCaption}個）`, penalty: 0 })
-  }
-  
-  const finalScore = Math.max(0, score)
-  return { score: finalScore, breakdown }
+  // LLMが後で上書きするための仮スコア
+  return { score: 50, breakdown }
 }
 
 function calculateUXScore(items: any): number {
-  let score = 100
-  
-  if (items.accessibility.ariaLabels < 3) score -= 10
-  if (!items.accessibility.skipLinks) score -= 5
-  if (!items.accessibility.formLabels && items.formCount > 0) score -= 10
-  
-  if (!items.navigation.breadcrumbs) score -= 10
-  if (items.wordCount > 2000 && !items.navigation.toc) score -= 10
-  if (!items.navigation.searchBox) score -= 5
-  
-  return Math.max(0, score)
+  // LLMに完全委任 - 初期値50点（中立）
+  // 実際のスコアはLLMが以下の要素を総合的に判断：
+  // - アクセシビリティ（ARIA、スキップリンク、フォームラベル）
+  // - ナビゲーション（パンくず、目次、検索ボックス）
+  return 50
 }
 
 export function generateAdvancedSeoReport(result: AdvancedSeoResult): string {
