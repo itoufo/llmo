@@ -44,7 +44,23 @@ export interface SEOResult {
   advancedSeo?: {
     technicalSeo: { score: number; items: any }
     performanceSeo: { score: number; items: any }
-    contentSeo: { score: number; items: any }
+    contentSeo: { 
+      score: number; 
+      items: any;
+      scoreBreakdown?: {
+        baseScore: number;
+        deductions: Array<{ reason: string; penalty: number; current: number }>;
+        calculations: Array<{ reason: string; penalty: number }>;
+        llmAdjustments?: Array<{
+          reason: string;
+          adjustment: number;
+          originalScore: number;
+          finalScore: number;
+          targetWordCount: number;
+          actualWordCount: number;
+        }>;
+      }
+    }
     userExperience: { score: number; items: any }
   }
 }

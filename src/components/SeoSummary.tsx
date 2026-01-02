@@ -291,7 +291,7 @@ export function SeoSummary({ seo, seoOverall }: Props) {
             </h4>
             
             {/* スコア計算詳細 */}
-            {expandedItems.has('contentSeoBreakdown') && extSeo.advancedSeo.contentSeo.scoreBreakdown && (
+            {expandedItems.has('contentSeoBreakdown') && (extSeo.advancedSeo.contentSeo as any).scoreBreakdown && (
               <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                 <h5 className="font-semibold text-blue-900 mb-3 flex items-center">
                   <span className="mr-2">🧮</span>
@@ -301,11 +301,11 @@ export function SeoSummary({ seo, seoOverall }: Props) {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between p-2 bg-white rounded">
                     <span>基本スコア</span>
-                    <span className="font-bold text-blue-700">{extSeo.advancedSeo.contentSeo.scoreBreakdown.baseScore}点</span>
+                    <span className="font-bold text-blue-700">{(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.baseScore}点</span>
                   </div>
                   
                   {/* 加点・減点項目 */}
-                  {extSeo.advancedSeo.contentSeo.scoreBreakdown.calculations?.map((calc: any, i: number) => (
+                  {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.calculations?.map((calc: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-2 bg-green-50 rounded text-green-800">
                       <span>✅ {calc.reason}</span>
                       <span className="font-medium">減点なし</span>
@@ -313,7 +313,7 @@ export function SeoSummary({ seo, seoOverall }: Props) {
                   ))}
                   
                   {/* 減点項目 */}
-                  {extSeo.advancedSeo.contentSeo.scoreBreakdown.deductions?.map((deduction: any, i: number) => (
+                  {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.deductions?.map((deduction: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-2 bg-red-50 rounded text-red-800">
                       <span>❌ {deduction.reason}</span>
                       <span className="font-medium">{deduction.penalty}点</span>
@@ -321,7 +321,7 @@ export function SeoSummary({ seo, seoOverall }: Props) {
                   ))}
                   
                   {/* LLM調整 */}
-                  {extSeo.advancedSeo.contentSeo.scoreBreakdown.llmAdjustments?.map((adjustment: any, i: number) => (
+                  {(extSeo.advancedSeo.contentSeo as any).scoreBreakdown.llmAdjustments?.map((adjustment: any, i: number) => (
                     <div key={i} className="p-3 bg-purple-50 rounded border border-purple-200">
                       <div className="flex items-center justify-between text-purple-800">
                         <span>🤖 LLMによる動的調整</span>
