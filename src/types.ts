@@ -42,6 +42,18 @@ export interface SEOResult {
   structured: { hasSchema: boolean; types: string[] }
 }
 
+export interface UsageInfo {
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cost: {
+    input: number
+    output: number
+    total: number
+  }
+}
+
 export interface AnalyzeResult {
   url: string
   scores: {
@@ -75,4 +87,30 @@ export interface AnalyzeResult {
     eeatStrengths?: string[]
     eeatWeaknesses?: string[]
   }
+  usage?: UsageInfo
+}
+
+// 診断結果のキャッシュエントリ
+export interface CachedResult {
+  date: string // YYYY-MM-DD
+  analyzedAt: string // ISO timestamp
+  result: AnalyzeResult
+}
+
+// ページごとの履歴
+export interface PageHistory {
+  url: string
+  latestScore: number
+  results: CachedResult[]
+}
+
+// ドメインごとの履歴
+export interface DomainHistory {
+  domain: string
+  pages: Record<string, PageHistory> // key: URL
+}
+
+// 全体の履歴ストレージ
+export interface HistoryStorage {
+  domains: Record<string, DomainHistory> // key: domain
 }

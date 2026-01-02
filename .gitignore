@@ -31,3 +31,5 @@ functions-dist
 *.njsproj
 *.sln
 *.sw?
+
+sync_config.jsonc

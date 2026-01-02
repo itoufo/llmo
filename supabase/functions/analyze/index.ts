@@ -8,6 +8,42 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+// ユーザー情報を取得
+async function getUserInfo(req: Request): Promise<{ userId: string | null; tenantId: string | null }> {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: null, tenantId: null }
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { userId: null, tenantId: null }
+    }
+
+    // デフォルトテナントを取得
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('default_tenant_id')
+      .eq('id', user.id)
+      .single()
+
+    return {
+      userId: user.id,
+      tenantId: profile?.default_tenant_id || null
+    }
+  } catch (e) {
+    console.warn('[analyze] Failed to get user info:', e)
+    return { userId: null, tenantId: null }
+  }
+}
+
 serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -23,6 +59,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+
+    // ユーザー情報取得（未ログインでも利用可能）
+    const { userId, tenantId } = await getUserInfo(req)
+    console.log(`[analyze] User: ${userId || 'anonymous'}, Tenant: ${tenantId || 'none'}`)
 
     console.log(`[analyze] Starting analysis for: ${url}`)
 
@@ -43,7 +83,7 @@ serve(async (req) => {
 
     // 3. LLM評価（LLMO + SEOコメント）
     console.log('[analyze] Evaluating with LLM...')
-    const llmResult = await evaluateWithLLM(content, seoResult)
+    const { result: llmResult, usage } = await evaluateWithLLM(content, seoResult)
 
     // 4. スコア計算
     const llmoOverall = Math.round(
@@ -63,6 +103,11 @@ serve(async (req) => {
         seoResult.mobile.score +
         seoResult.performance.score) / 7
     )
+
+    // コスト計算（gpt-4o-mini価格: input $0.15/1M, output $0.60/1M）
+    const inputCost = (usage.promptTokens / 1_000_000) * 0.15
+    const outputCost = (usage.completionTokens / 1_000_000) * 0.60
+    const totalCost = inputCost + outputCost
 
     const result = {
       url,
@@ -96,25 +141,61 @@ serve(async (req) => {
         structureIssues: llmResult.structure.issues,
         eeatStrengths: llmResult.eeat.strengths,
         eeatWeaknesses: llmResult.eeat.weaknesses
+      },
+      usage: {
+        model: usage.model,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        cost: {
+          input: inputCost,
+          output: outputCost,
+          total: totalCost
+        }
       }
     }
 
-    // 5. Supabaseに保存
+    // 5. Supabaseに保存（llmoスキーマ）
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { db: { schema: 'llmo' } }
     )
 
     await supabase.from('analyses').insert({
       url,
+      // ユーザー・テナント
+      user_id: userId,
+      tenant_id: tenantId,
+      // LLMO スコア
       ai_citation: result.scores.aiCitation,
       question_fit: result.scores.questionFit,
       coverage: result.scores.coverage,
       structure: result.scores.structure,
       eeat: result.scores.eeat,
+      llmo_overall: llmoOverall,
+      // SEO スコア
+      seo_title: seoResult.title.score,
+      seo_meta: seoResult.meta.score,
+      seo_headings: seoResult.headings.score,
+      seo_images: seoResult.images.score,
+      seo_links: seoResult.links.score,
+      seo_mobile: seoResult.mobile.score,
+      seo_performance: seoResult.performance.score,
+      seo_overall: seoOverall,
+      // 総合
       overall: result.scores.overall,
+      // 詳細
       improvements: result.improvements,
-      raw_result: { llm: llmResult, seo: seoResult }
+      questions: llmResult.questions,
+      seo_details: seoResult,
+      raw_result: { llm: llmResult, seo: seoResult },
+      // LLM使用量
+      model: usage.model,
+      prompt_tokens: usage.promptTokens,
+      completion_tokens: usage.completionTokens,
+      total_tokens: usage.totalTokens,
+      cost_usd: totalCost
     })
 
     console.log(`[analyze] Completed. LLMO: ${llmoOverall}, SEO: ${seoOverall}`)
@@ -537,8 +618,15 @@ function generateRecommendedHead(seo: any, url: string, title: string, descripti
 </head>`
 }
 
-async function evaluateWithLLM(text: string, seoResult: any) {
-  const models = ['gpt-5-mini', 'gpt-4o-mini']
+interface LLMUsage {
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+async function evaluateWithLLM(text: string, seoResult: any): Promise<{ result: any; usage: LLMUsage }> {
+  const models = ['gpt-4o-mini', 'gpt-4o']
 
   const openai = new OpenAI({
     apiKey: Deno.env.get('OPENAI_API_KEY')!
@@ -695,7 +783,15 @@ ${seoSummary}
         }
 
         try {
-          return JSON.parse(content)
+          const parsedResult = JSON.parse(content)
+          const usage: LLMUsage = {
+            model,
+            promptTokens: res.usage?.prompt_tokens || 0,
+            completionTokens: res.usage?.completion_tokens || 0,
+            totalTokens: res.usage?.total_tokens || 0
+          }
+          console.log(`[analyze] Token usage: ${usage.totalTokens} (prompt: ${usage.promptTokens}, completion: ${usage.completionTokens})`)
+          return { result: parsedResult, usage }
         } catch (e: any) {
           throw new Error(`Failed to parse JSON: ${e.message}`)
         }

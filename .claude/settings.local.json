@@ -5,7 +5,11 @@
       "Bash(npx tailwindcss init -p)",
       "Bash(./node_modules/.bin/tailwindcss:*)",
       "Bash(npm run build:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(brew install:*)",
+      "Bash(npx supabase:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { UrlForm } from './components/UrlForm'
 import { ScoreRadar } from './components/ScoreRadar'
 import { ScoreSummary } from './components/ScoreSummary'
@@ -6,14 +6,114 @@ import { QuestionsList } from './components/QuestionsList'
 import { ImprovementsList } from './components/ImprovementsList'
 import { SeoSummary } from './components/SeoSummary'
 import { Tooltip } from './components/Tooltip'
-import type { AnalyzeResult } from './types'
+import { UserMenu } from './components/UserMenu'
+import { AuthModal } from './components/AuthModal'
+import { useAuth } from './contexts/AuthContext'
+import type { AnalyzeResult, HistoryStorage } from './types'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
+const HISTORY_KEY = 'llmo-doctor-history-v2'
+const MAX_RESULTS_PER_PAGE = 5
+
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url
+  }
+}
+
+function getToday(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function App() {
   const [result, setResult] = useState<AnalyzeResult | null>(null)
+  const [fromCache, setFromCache] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [historyStorage, setHistoryStorage] = useState<HistoryStorage>({ domains: {} })
+  const [showHistory, setShowHistory] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
   const resultsRef = useRef<HTMLDivElement>(null)
+  useAuth() // Initialize auth context
+
+  // Load history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(HISTORY_KEY)
+    if (saved) {
+      try {
+        setHistoryStorage(JSON.parse(saved))
+      } catch {}
+    }
+  }, [])
+
+  // Check cache for same-day result
+  const getCachedResult = useCallback((url: string): AnalyzeResult | null => {
+    const domain = getDomain(url)
+    const today = getToday()
+    const pageHistory = historyStorage.domains[domain]?.pages[url]
+    if (pageHistory) {
+      const todayResult = pageHistory.results.find(r => r.date === today)
+      if (todayResult) {
+        return todayResult.result
+      }
+    }
+    return null
+  }, [historyStorage])
+
+  // Save result to history
+  const saveToHistory = useCallback((newResult: AnalyzeResult) => {
+    const domain = getDomain(newResult.url)
+    const today = getToday()
+    const now = new Date().toISOString()
+
+    setHistoryStorage(prev => {
+      const updated = { ...prev }
+      if (!updated.domains[domain]) {
+        updated.domains[domain] = { domain, pages: {} }
+      }
+      if (!updated.domains[domain].pages[newResult.url]) {
+        updated.domains[domain].pages[newResult.url] = {
+          url: newResult.url,
+          latestScore: newResult.scores.overall,
+          results: []
+        }
+      }
+
+      const page = updated.domains[domain].pages[newResult.url]
+      // Remove existing same-day result
+      page.results = page.results.filter(r => r.date !== today)
+      // Add new result at the beginning
+      page.results.unshift({
+        date: today,
+        analyzedAt: now,
+        result: newResult
+      })
+      // Keep only recent results
+      page.results = page.results.slice(0, MAX_RESULTS_PER_PAGE)
+      page.latestScore = newResult.scores.overall
+
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(updated))
+      return updated
+    })
+  }, [])
+
+  // Handle result (check cache or save new)
+  const handleResult = useCallback((newResult: AnalyzeResult, isFromCache: boolean = false) => {
+    setResult(newResult)
+    setFromCache(isFromCache)
+    if (!isFromCache) {
+      saveToHistory(newResult)
+    }
+  }, [saveToHistory])
+
+  // Get domain list for display
+  const domainList = Object.values(historyStorage.domains).sort((a, b) => {
+    const aLatest = Math.max(...Object.values(a.pages).flatMap(p => p.results.map(r => new Date(r.analyzedAt).getTime())))
+    const bLatest = Math.max(...Object.values(b.pages).flatMap(p => p.results.map(r => new Date(r.analyzedAt).getTime())))
+    return bLatest - aLatest
+  })
 
   const exportAsPDF = async () => {
     if (!result || !resultsRef.current) return
@@ -33,26 +133,31 @@ function App() {
       })
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
+      const margin = 10
+      const contentWidth = pdfWidth - margin * 2
+
+      // Scale image to fit PDF width (not height)
       const imgWidth = canvas.width
       const imgHeight = canvas.height
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-      const imgX = (pdfWidth - imgWidth * ratio) / 2
-      let heightLeft = imgHeight * ratio
-      let position = 0
+      const ratio = contentWidth / imgWidth
+      const scaledHeight = imgHeight * ratio
+
+      let heightLeft = scaledHeight
+      let position = margin
 
       // First page
-      pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, imgHeight * ratio)
-      heightLeft -= pdfHeight
+      pdf.addImage(imgData, 'PNG', margin, position, contentWidth, scaledHeight)
+      heightLeft -= (pdfHeight - margin * 2)
 
-      // Additional pages if needed
+      // Additional pages if content exceeds one page
       while (heightLeft > 0) {
-        position -= pdfHeight
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', imgX, position, imgWidth * ratio, imgHeight * ratio)
-        heightLeft -= pdfHeight
+        position = margin - (scaledHeight - heightLeft)
+        pdf.addImage(imgData, 'PNG', margin, position, contentWidth, scaledHeight)
+        heightLeft -= (pdfHeight - margin * 2)
       }
 
-      pdf.save(`llmo-seo-report-${new Date().toISOString().slice(0, 10)}.pdf`)
+      pdf.save(`llmo-doctor-report-${new Date().toISOString().slice(0, 10)}.pdf`)
     } catch (error) {
       console.error('PDF export failed:', error)
       alert('PDFエクスポートに失敗しました')
@@ -67,7 +172,7 @@ function App() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `llmo-seo-report-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `llmo-doctor-report-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -101,13 +206,18 @@ function App() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `llmo-seo-report-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `llmo-doctor-report-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   return (
     <div className="min-h-screen bg-gradient-animate">
+      {/* Top navigation */}
+      <div className="absolute top-4 right-4 z-40">
+        <UserMenu onLoginClick={() => setShowAuthModal(true)} />
+      </div>
+
       <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-14 animate-in">
@@ -129,7 +239,82 @@ function App() {
 
         {/* Input Form */}
         <div className="card-elevated p-8 mb-10 animate-in-delayed">
-          <UrlForm onResult={setResult} />
+          <UrlForm
+            onResult={handleResult}
+            getCachedResult={getCachedResult}
+          />
+          {/* History toggle */}
+          {domainList.length > 0 && !result && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="text-sm text-gray-500 hover:text-indigo-600 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                診断履歴 ({domainList.length}ドメイン)
+                <svg className={`w-4 h-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showHistory && (
+                <div className="mt-4 space-y-4 max-h-96 overflow-y-auto">
+                  {domainList.map(domainHistory => (
+                    <div key={domainHistory.domain} className="bg-gray-50 rounded-xl p-4">
+                      <div className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-indigo-400 rounded-full"></span>
+                        {domainHistory.domain}
+                        <span className="text-xs text-gray-400">
+                          ({Object.keys(domainHistory.pages).length}ページ)
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {Object.values(domainHistory.pages)
+                          .sort((a, b) => {
+                            const aTime = new Date(a.results[0]?.analyzedAt || 0).getTime()
+                            const bTime = new Date(b.results[0]?.analyzedAt || 0).getTime()
+                            return bTime - aTime
+                          })
+                          .map(page => {
+                            const latestResult = page.results[0]
+                            if (!latestResult) return null
+                            const isToday = latestResult.date === getToday()
+                            return (
+                              <div
+                                key={page.url}
+                                className="flex items-center justify-between text-sm bg-white rounded-lg px-3 py-2 hover:bg-indigo-50 transition-colors cursor-pointer group"
+                                onClick={() => handleResult(latestResult.result, true)}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-gray-600 truncate block" title={page.url}>
+                                    {page.url.replace(/^https?:\/\/[^/]+/, '') || '/'}
+                                  </span>
+                                  {page.results.length > 1 && (
+                                    <span className="text-xs text-gray-400">
+                                      {page.results.length}件の履歴
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 ml-2">
+                                  <span className="font-bold text-indigo-600">{page.latestScore}</span>
+                                  <span className={`text-xs ${isToday ? 'text-emerald-500 font-medium' : 'text-gray-400'}`}>
+                                    {isToday ? '今日' : new Date(latestResult.analyzedAt).toLocaleDateString('ja-JP')}
+                                  </span>
+                                  <svg className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Results */}
@@ -168,6 +353,32 @@ function App() {
                   <div className="text-sm text-gray-500 mt-6 px-4 py-2 bg-gray-50 rounded-full inline-block">
                     診断URL: <a href={result.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 hover:underline break-all font-medium">{result.url}</a>
                   </div>
+
+                  {/* Cache indicator */}
+                  {fromCache && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs border border-amber-200">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      履歴から復元（本日の診断結果）
+                    </div>
+                  )}
+
+                  {/* Token usage & Cost */}
+                  {result.usage && (
+                    <div className="mt-4 flex flex-wrap justify-center gap-3 text-xs">
+                      <div className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200">
+                        <span className="font-medium">{result.usage.totalTokens.toLocaleString()}</span> tokens
+                        <span className="text-amber-500 ml-1">
+                          (in: {result.usage.promptTokens.toLocaleString()} / out: {result.usage.completionTokens.toLocaleString()})
+                        </span>
+                      </div>
+                      <div className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200">
+                        <span className="font-medium">${result.usage.cost.total.toFixed(4)}</span>
+                        <span className="text-emerald-500 ml-1">({result.usage.model})</span>
+                      </div>
+                    </div>
+                  )}
                   {result.details?.aiCitationComment && (
                     <div className="mt-6 text-sm text-gray-600 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 max-w-xl mx-auto border border-indigo-100">
                       {result.details.aiCitationComment}
@@ -280,6 +491,9 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
   )
 }

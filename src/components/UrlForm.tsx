@@ -1,30 +1,61 @@
 import { useState } from 'react'
 import type { AnalyzeResult } from '../types'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Props {
-  onResult: (result: AnalyzeResult) => void
+  onResult: (result: AnalyzeResult, fromCache?: boolean) => void
+  getCachedResult: (url: string) => AnalyzeResult | null
 }
 
-export function UrlForm({ onResult }: Props) {
+export function UrlForm({ onResult, getCachedResult }: Props) {
+  const { session } = useAuth()
   const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cacheHint, setCacheHint] = useState<string | null>(null)
+
+  // Check cache when URL changes
+  const handleUrlChange = (newUrl: string) => {
+    setUrl(newUrl)
+    setError(null)
+    if (newUrl && newUrl.startsWith('http')) {
+      const cached = getCachedResult(newUrl)
+      if (cached) {
+        setCacheHint('本日の診断結果があります')
+      } else {
+        setCacheHint(null)
+      }
+    } else {
+      setCacheHint(null)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
+    // Check cache first
+    const cached = getCachedResult(url)
+    if (cached) {
+      onResult(cached, true)
+      setLoading(false)
+      return
+    }
+
     try {
       // Supabase Edge Function を呼び出し
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+      // ログイン済みの場合はセッショントークンを使用
+      const authToken = session?.access_token || supabaseAnonKey
+
       const res = await fetch(`${supabaseUrl}/functions/v1/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({ url })
       })
@@ -35,7 +66,7 @@ export function UrlForm({ onResult }: Props) {
         throw new Error(data.error || 'Failed to analyze')
       }
 
-      onResult(data)
+      onResult(data, false)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -51,7 +82,7 @@ export function UrlForm({ onResult }: Props) {
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
             </svg>
           </div>
@@ -59,13 +90,21 @@ export function UrlForm({ onResult }: Props) {
             id="url"
             type="url"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => handleUrlChange(e.target.value)}
             placeholder="https://example.com/article"
             className="input-primary pl-12"
             required
             disabled={loading}
           />
         </div>
+        {cacheHint && (
+          <p className="mt-2 text-xs text-emerald-600 flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {cacheHint}（再診断せず結果を表示します）
+          </p>
+        )}
       </div>
 
       <button
