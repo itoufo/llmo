@@ -32,6 +32,9 @@ export function SeoSummary({ seo, seoOverall }: Props) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const extSeo = seo as ExtendedSEOResult
+  
+  // デバッグ: Advanced SEOデータの確認
+  console.log('SeoSummary - Advanced SEO data:', extSeo.advancedSeo)
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200'

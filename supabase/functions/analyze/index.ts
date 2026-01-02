@@ -80,7 +80,7 @@ serve(async (req) => {
 
     // 2. SEO診断（HTMLから抽出）
     console.log('[analyze] Analyzing SEO...')
-    const seoResult = analyzeSEO(html, url, content)
+    const seoResult = await analyzeSEO(html, url, content)
 
     // 3. LLM評価（LLMO + SEOコメント）
     console.log('[analyze] Evaluating with LLM...')
@@ -258,7 +258,7 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
 }
 
 // SEO診断関数 - HTMLフィードバック付き
-function analyzeSEO(html: string, url: string, content: string) {
+async function analyzeSEO(html: string, url: string, content: string) {
   const result = {
     title: { score: 0, value: '', issues: [] as string[], suggestions: [] as string[], htmlFix: '' },
     meta: { score: 0, description: '', keywords: '', issues: [] as string[], suggestions: [] as string[], htmlFix: '' },
