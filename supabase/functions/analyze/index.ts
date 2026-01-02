@@ -875,8 +875,8 @@ ${seoSummary}
           model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
-          // LLMをフル活用してより詳細な統合評価を実施
-          max_completion_tokens: 20000
+          // LLMをフル活用してより詳細な統合評価を実施（gpt-4o-mini上限: 16384）
+          max_completion_tokens: 16000
         })
 
         const choice = res.choices?.[0]
