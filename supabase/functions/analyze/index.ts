@@ -116,6 +116,53 @@ serve(async (req) => {
       if (seoResult.advancedSeo.contentSeo.scoreBreakdown) {
         seoResult.advancedSeo.contentSeo.scoreBreakdown.llmScore = llmResult.advancedSeoScores.contentSeo
         seoResult.advancedSeo.contentSeo.scoreBreakdown.llmReasoning = llmResult.advancedSeoScores.contentReasoning
+        
+        // 点数内訳を計算（100点満点の内訳）
+        const contentScore = llmResult.advancedSeoScores.contentSeo
+        
+        // コンテンツの実際の状況に基づいて点数配分
+        const wordCount = seoResult.advancedSeo.contentSeo.items.wordCount.value
+        const hasImages = seoResult.advancedSeo.contentSeo.items.multimedia.images > 0
+        const hasLists = (seoResult.advancedSeo.contentSeo.items.lists.ordered + 
+                         seoResult.advancedSeo.contentSeo.items.lists.unordered) > 0
+        const hasTables = seoResult.advancedSeo.contentSeo.items.tables.count > 0
+        
+        // 文字数による点数（40点満点）
+        let wordCountScore = 0
+        if (wordCount >= 2000) wordCountScore = 40
+        else if (wordCount >= 1500) wordCountScore = 35
+        else if (wordCount >= 1000) wordCountScore = 30
+        else if (wordCount >= 500) wordCountScore = 20
+        else wordCountScore = 10
+        
+        // メディア要素による点数（20点満点）
+        let mediaScore = hasImages ? 15 : 5
+        if (seoResult.advancedSeo.contentSeo.items.multimedia.images >= 3) mediaScore = 20
+        
+        // 構造化による点数（20点満点）
+        let structureScore = 10
+        if (hasLists) structureScore += 5
+        if (hasTables) structureScore += 5
+        
+        // 情報密度による点数（20点満点）- LLMスコアに基づく
+        let densityScore = Math.round((contentScore / 100) * 20)
+        
+        // 合計が100点を超えないよう調整
+        const total = wordCountScore + mediaScore + structureScore + densityScore
+        if (total > contentScore) {
+          const ratio = contentScore / total
+          wordCountScore = Math.round(wordCountScore * ratio)
+          mediaScore = Math.round(mediaScore * ratio)
+          structureScore = Math.round(structureScore * ratio)
+          densityScore = Math.round(densityScore * ratio)
+        }
+        
+        seoResult.advancedSeo.contentSeo.scoreBreakdown.llmDetails = {
+          wordCountScore,
+          mediaScore,
+          structureScore,
+          densityScore
+        }
       }
     }
 
