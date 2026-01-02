@@ -375,13 +375,13 @@ export function SeoSummary({ seo, seoOverall }: Props) {
         <h3 className="font-medium mb-3">その他の確認項目</h3>
         <div className="space-y-2 text-sm">
           <div className="flex items-center">
-            <span className={extSeo.canonical.hasCanonical ? 'text-green-600' : 'text-yellow-600'}>
-              {extSeo.canonical.hasCanonical ? '✅' : '⚠️'}
+            <span className={extSeo.canonical?.hasCanonical ? 'text-green-600' : 'text-yellow-600'}>
+              {extSeo.canonical?.hasCanonical ? '✅' : '⚠️'}
             </span>
             <span className="ml-2">
-              Canonical URL: {extSeo.canonical.hasCanonical ? extSeo.canonical.url : '未設定'}
+              Canonical URL: {extSeo.canonical?.hasCanonical ? extSeo.canonical.url : '未設定'}
             </span>
-            {!extSeo.canonical.hasCanonical && extSeo.canonical.htmlFix && (
+            {!extSeo.canonical?.hasCanonical && extSeo.canonical?.htmlFix && (
               <button
                 onClick={() => copyToClipboard(extSeo.canonical.htmlFix || '')}
                 className="ml-2 text-xs text-blue-600 hover:underline"
@@ -391,14 +391,14 @@ export function SeoSummary({ seo, seoOverall }: Props) {
             )}
           </div>
           <div className="flex items-center">
-            <span className={extSeo.structured.hasSchema ? 'text-green-600' : 'text-yellow-600'}>
-              {extSeo.structured.hasSchema ? '✅' : '⚠️'}
+            <span className={extSeo.structured?.hasSchema ? 'text-green-600' : 'text-yellow-600'}>
+              {extSeo.structured?.hasSchema ? '✅' : '⚠️'}
             </span>
             <span className="ml-2">
-              構造化データ: {extSeo.structured.hasSchema ? extSeo.structured.types.join(', ') : '未設定'}
+              構造化データ: {extSeo.structured?.hasSchema ? extSeo.structured.types?.join(', ') : '未設定'}
             </span>
           </div>
-          {extSeo.robots.issues && extSeo.robots.issues.length > 0 && (
+          {extSeo.robots?.issues && extSeo.robots.issues.length > 0 && (
             <div className="flex items-center text-red-600">
               <span>🚫</span>
               <span className="ml-2">{extSeo.robots.issues.join(', ')}</span>
