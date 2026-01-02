@@ -89,36 +89,40 @@ export function ContentSeoCard({ contentSeo }: ContentSeoProps) {
                 
                 {/* 点数内訳の詳細表示 */}
                 <div className="bg-white/70 p-3 rounded space-y-2 text-xs">
-                  <div className="font-semibold text-purple-900 mb-2">点数内訳:</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex justify-between p-1 bg-purple-50 rounded">
-                      <span>文字数（40点満点）</span>
-                      <span className="font-bold">
-                        {scoreBreakdown.llmDetails?.wordCountScore || '計算中'}点
-                      </span>
-                    </div>
-                    <div className="flex justify-between p-1 bg-purple-50 rounded">
-                      <span>画像・メディア（20点満点）</span>
-                      <span className="font-bold">
-                        {scoreBreakdown.llmDetails?.mediaScore || '計算中'}点
-                      </span>
-                    </div>
-                    <div className="flex justify-between p-1 bg-purple-50 rounded">
-                      <span>構造化（20点満点）</span>
-                      <span className="font-bold">
-                        {scoreBreakdown.llmDetails?.structureScore || '計算中'}点
-                      </span>
-                    </div>
-                    <div className="flex justify-between p-1 bg-purple-50 rounded">
-                      <span>情報密度（20点満点）</span>
-                      <span className="font-bold">
-                        {scoreBreakdown.llmDetails?.densityScore || '計算中'}点
-                      </span>
-                    </div>
-                  </div>
+                  {scoreBreakdown.llmDetails && (
+                    <>
+                      <div className="font-semibold text-purple-900 mb-2">点数内訳:</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="flex justify-between p-1 bg-purple-50 rounded">
+                          <span>文字数（40点満点）</span>
+                          <span className="font-bold">
+                            {scoreBreakdown.llmDetails.wordCountScore}点
+                          </span>
+                        </div>
+                        <div className="flex justify-between p-1 bg-purple-50 rounded">
+                          <span>画像・メディア（20点満点）</span>
+                          <span className="font-bold">
+                            {scoreBreakdown.llmDetails.mediaScore}点
+                          </span>
+                        </div>
+                        <div className="flex justify-between p-1 bg-purple-50 rounded">
+                          <span>構造化（20点満点）</span>
+                          <span className="font-bold">
+                            {scoreBreakdown.llmDetails.structureScore}点
+                          </span>
+                        </div>
+                        <div className="flex justify-between p-1 bg-purple-50 rounded">
+                          <span>情報密度（20点満点）</span>
+                          <span className="font-bold">
+                            {scoreBreakdown.llmDetails.densityScore}点
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   
                   {scoreBreakdown.llmReasoning && (
-                    <div className="mt-3 pt-2 border-t border-purple-200">
+                    <div className={scoreBreakdown.llmDetails ? "mt-3 pt-2 border-t border-purple-200" : ""}>
                       <div className="font-semibold mb-1">計算根拠:</div>
                       <div className="whitespace-pre-wrap text-purple-700">
                         {scoreBreakdown.llmReasoning}
