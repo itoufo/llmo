@@ -95,7 +95,8 @@ serve(async (req) => {
         llmResult.eeat.score) / 5
     )
 
-    const seoOverall = Math.round(
+    // Advanced SEOスコアを使用（よりdetailedな評価）
+    const seoOverall = seoResult.seoOverallScore || Math.round(
       (seoResult.title.score +
         seoResult.meta.score +
         seoResult.headings.score +
@@ -550,7 +551,8 @@ function analyzeSEO(html: string, url: string, content: string) {
   )
   
   // 基本SEOとAdvanced SEOの重み付け平均（Advanced SEOを重視）
-  result.seoOverallScore = Math.round(basicSeoScore * 0.3 + advancedSeoScore * 0.7)
+  const seoOverallScore = Math.round(basicSeoScore * 0.3 + advancedSeoScore * 0.7)
+  result.seoOverallScore = seoOverallScore
 
   return result
 }

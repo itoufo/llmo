@@ -147,8 +147,8 @@ export function Dashboard() {
         new Date(a.created_at).toLocaleString('ja-JP'),
         a.url,
         a.score?.toString() || '',
-        a.result?.metadata?.title || '',
-        a.result?.issues?.length?.toString() || '0'
+        a.result?.seo?.title?.value || '',
+        a.result?.improvements?.length?.toString() || '0'
       ])
     ].map(row => row.join(',')).join('\n')
 
@@ -282,7 +282,7 @@ export function Dashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                      {analysis.result?.metadata?.title || '-'}
+                      {analysis.result?.seo?.title?.value || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">

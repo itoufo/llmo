@@ -10,7 +10,10 @@
       "Bash(git commit:*)",
       "Bash(brew install:*)",
       "Bash(npx supabase:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(netlify sites:list:*)",
+      "Bash(netlify link:*)"
     ],
     "deny": [],
     "ask": []

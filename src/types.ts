@@ -40,6 +40,13 @@ export interface SEOResult {
   canonical: { url: string; hasCanonical: boolean }
   robots: { content: string; issues: string[] }
   structured: { hasSchema: boolean; types: string[] }
+  seoOverallScore?: number
+  advancedSeo?: {
+    technicalSeo: { score: number; items: any }
+    performanceSeo: { score: number; items: any }
+    contentSeo: { score: number; items: any }
+    userExperience: { score: number; items: any }
+  }
 }
 
 export interface UsageInfo {
@@ -79,6 +86,12 @@ export interface AnalyzeResult {
   improvements: Improvement[]
   questions: QuestionsEvaluation
   seo?: SEOResult
+  result?: {
+    metadata?: {
+      title?: string
+    }
+    issues?: any[]
+  }
   details?: {
     aiCitationComment?: string
     missingConcepts?: string[]
@@ -113,4 +126,38 @@ export interface DomainHistory {
 // 全体の履歴ストレージ
 export interface HistoryStorage {
   domains: Record<string, DomainHistory> // key: domain
+}
+
+// 分析結果（DB用）
+export interface Analysis {
+  id: string
+  url: string
+  score: number
+  result: AnalyzeResult
+  user_id: string | null
+  tenant_id: string | null
+  created_at: string
+}
+
+// テナント情報
+export interface Tenant {
+  id: string
+  name: string
+  slug: string
+  plan: string
+  monthly_limit: number
+  settings: Record<string, any>
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// プロファイル情報
+export interface Profile {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+  default_tenant_id: string | null
+  created_at: string
+  updated_at: string
 }

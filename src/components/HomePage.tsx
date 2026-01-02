@@ -395,9 +395,9 @@ export function HomePage() {
             </div>
 
             {/* SEO詳細 */}
-            {result.seo && result.scores.seoOverall !== undefined && (
+            {result.seo && (result.scores.seoOverall !== undefined || result.seo.seoOverallScore !== undefined) && (
               <div className="pt-8 border-t border-gray-100">
-                <SeoSummary seo={result.seo} seoOverall={result.scores.seoOverall} />
+                <SeoSummary seo={result.seo} seoOverall={result.scores.seoOverall || result.seo.seoOverallScore} />
               </div>
             )}
           </div>

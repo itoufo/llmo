@@ -17,5 +17,6 @@ export type Tenant = {
   name: string
   slug: string
   plan: string
+  monthly_limit: number
   settings: Record<string, unknown>
 }
