@@ -250,13 +250,9 @@ export async function analyzeAdvancedSeo(html: string, url: string): Promise<Adv
   const wordCount = textContent.split(/\s+/).length
   result.contentSeo.items.wordCount.value = wordCount
   
-  if (wordCount < 300) {
-    result.contentSeo.items.wordCount.rating = 'thin'
-  } else if (wordCount < 2000) {
-    result.contentSeo.items.wordCount.rating = 'optimal'
-  } else {
-    result.contentSeo.items.wordCount.rating = 'comprehensive'
-  }
+  // 文字数評価はLLMで動的に行うため、一時的に'optimal'に設定
+  // 実際の評価はevaluateWithLLMで上書きされる
+  result.contentSeo.items.wordCount.rating = 'optimal'
 
   // Multimedia count
   result.contentSeo.items.multimedia.images = (html.match(/<img[^>]*>/gi) || []).length

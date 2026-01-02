@@ -135,77 +135,363 @@ export function SeoSummary({ seo, seoOverall }: Props) {
         </div>
       )}
 
-      {/* Advanced SEO スコア */}
+      {/* Advanced SEO 詳細診断 */}
       {extSeo.advancedSeo && (
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
-          <h3 className="text-lg font-bold text-indigo-800 mb-4 flex items-center">
-            <span className="mr-2">🔍</span>
-            詳細SEO診断スコア
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
-              <div className="text-sm text-gray-600 mb-1">技術的SEO</div>
-              <div className={`text-2xl font-bold ${extSeo.advancedSeo.technicalSeo.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.technicalSeo.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {extSeo.advancedSeo.technicalSeo.score}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {!extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists && '❌ Canonical '}
-                {!extSeo.advancedSeo.technicalSeo.items.jsonLd.exists && '❌ JSON-LD '}
-                {!extSeo.advancedSeo.technicalSeo.items.openGraph.complete && '⚠️ OGP不完全'}
-              </div>
-            </div>
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
-              <div className="text-sm text-gray-600 mb-1">パフォーマンス</div>
-              <div className={`text-2xl font-bold ${extSeo.advancedSeo.performanceSeo.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.performanceSeo.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {extSeo.advancedSeo.performanceSeo.score}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'too-heavy' && '⚠️ HTMLサイズ大 '}
-                {extSeo.advancedSeo.performanceSeo.items.inlineJS.excessive && '⚠️ インラインJS多'}
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+            <h3 className="text-xl font-bold text-indigo-800 mb-6 flex items-center">
+              <span className="mr-3">🤖</span>
+              統合SEO診断結果（LLM × Advanced SEO）
+            </h3>
+            
+            {/* スコア算出方法の説明 */}
+            <div className="bg-white rounded-lg p-4 mb-6 border border-indigo-100">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <span className="mr-2">🤖</span>
+                AIによる統合評価システム
+              </h4>
+              <div className="text-sm text-gray-700 space-y-2">
+                <div>🔹 <strong>基本SEO</strong>：30% の重み（タイトル、メタディスクリプション、見出し、画像など）</div>
+                <div>🔹 <strong>詳細SEO</strong>：70% の重み（技術的SEO、パフォーマンス、コンテンツ、UX）</div>
+                <div>🔹 <strong>LLM評価</strong>：コンテンツの質、情報密度、独自性を動的に評価</div>
+                <div className="text-xs text-indigo-600 bg-indigo-50 p-2 rounded mt-3">
+                  💡 固定基準ではなく、コンテンツの特性に応じてAIが最適な評価基準を算出
+                </div>
               </div>
             </div>
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
-              <div className="text-sm text-gray-600 mb-1">コンテンツSEO</div>
-              <div className={`text-2xl font-bold ${extSeo.advancedSeo.contentSeo.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.contentSeo.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {extSeo.advancedSeo.contentSeo.score}
+            
+            {/* サマリースコア */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">技術的SEO</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.technicalSeo.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.technicalSeo.score}
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'thin' && '❌ コンテンツ少 '}
-                {extSeo.advancedSeo.contentSeo.items.multimedia.images === 0 && '❌ 画像なし'}
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">パフォーマンス</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.performanceSeo.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.performanceSeo.score}
+                </div>
               </div>
-            </div>
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
-              <div className="text-sm text-gray-600 mb-1">ユーザー体験</div>
-              <div className={`text-2xl font-bold ${extSeo.advancedSeo.userExperience.score >= 80 ? 'text-green-600' : extSeo.advancedSeo.userExperience.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {extSeo.advancedSeo.userExperience.score}
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">コンテンツSEO</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.contentSeo.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.contentSeo.score}
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {!extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs && '❌ パンくず '}
-                {!extSeo.advancedSeo.userExperience.items.accessibility.skipLinks && '❌ スキップリンク'}
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">ユーザー体験</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.userExperience.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.userExperience.score}
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* 詳細な問題点リスト */}
-          <div className="mt-4 p-4 bg-white rounded-lg border border-indigo-100">
-            <h4 className="font-semibold text-gray-800 mb-2">主な改善ポイント</h4>
-            <ul className="text-sm space-y-1 text-gray-600">
+
+          {/* 技術的SEO詳細 */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="mr-2">🔧</span>
+              技術的SEO（{extSeo.advancedSeo.technicalSeo.score}点）
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">Canonical URL</span>
+                  <span className={extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists ? '✅ 設定済み' : '❌ 未設定'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">JSON-LD構造化データ</span>
+                  <span className={extSeo.advancedSeo.technicalSeo.items.jsonLd.exists ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.technicalSeo.items.jsonLd.exists ? '✅ 設定済み' : '❌ 未設定'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">Open Graph</span>
+                  <span className={extSeo.advancedSeo.technicalSeo.items.openGraph.complete ? 'text-green-600' : extSeo.advancedSeo.technicalSeo.items.openGraph.exists ? 'text-yellow-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.technicalSeo.items.openGraph.complete ? '✅ 完全' : extSeo.advancedSeo.technicalSeo.items.openGraph.exists ? '⚠️ 不完全' : '❌ 未設定'}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">Twitter Card</span>
+                  <span className={extSeo.advancedSeo.technicalSeo.items.twitterCard.exists ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.technicalSeo.items.twitterCard.exists ? '✅ 設定済み' : '❌ 未設定'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">SSL設定</span>
+                  <span className={extSeo.advancedSeo.technicalSeo.items.ssl.enabled ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.technicalSeo.items.ssl.enabled ? '✅ HTTPS' : '❌ HTTP'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">Viewport設定</span>
+                  <span className={extSeo.advancedSeo.technicalSeo.items.mobileViewport.exists ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.technicalSeo.items.mobileViewport.exists ? '✅ 設定済み' : '❌ 未設定'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* パフォーマンスSEO詳細 */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="mr-2">⚡</span>
+              パフォーマンスSEO（{extSeo.advancedSeo.performanceSeo.score}点）
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">HTMLサイズ</span>
+                  <span className={extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'optimal' ? 'text-green-600' : extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'heavy' ? 'text-yellow-600' : 'text-red-600'}>
+                    {Math.round(extSeo.advancedSeo.performanceSeo.items.htmlSize.value / 1024)}KB ({extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'optimal' ? '最適' : extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'heavy' ? '重い' : '過重'})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">インラインCSS</span>
+                  <span className={extSeo.advancedSeo.performanceSeo.items.inlineCSS.excessive ? 'text-red-600' : 'text-green-600'}>
+                    {extSeo.advancedSeo.performanceSeo.items.inlineCSS.count}個 ({extSeo.advancedSeo.performanceSeo.items.inlineCSS.excessive ? '多い' : 'OK'})
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">インラインJS</span>
+                  <span className={extSeo.advancedSeo.performanceSeo.items.inlineJS.excessive ? 'text-red-600' : 'text-green-600'}>
+                    {extSeo.advancedSeo.performanceSeo.items.inlineJS.count}個 ({extSeo.advancedSeo.performanceSeo.items.inlineJS.excessive ? '多い' : 'OK'})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">外部リンク</span>
+                  <span className="text-gray-700">
+                    {extSeo.advancedSeo.performanceSeo.items.externalLinks.count}個 (nofollow: {extSeo.advancedSeo.performanceSeo.items.externalLinks.nofollow}個)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* コンテンツSEO詳細 */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="mr-2">📝</span>
+              コンテンツSEO（{extSeo.advancedSeo.contentSeo.score}点）
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">コンテンツ量</span>
+                  <span className={extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'comprehensive' ? 'text-green-600' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'optimal' ? 'text-green-600' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'adequate' ? 'text-yellow-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.contentSeo.items.wordCount.value}語 ({extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'thin' ? '薄い' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'adequate' ? '適切' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'optimal' ? '最適' : '包括的'})
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">画像</span>
+                  <span className={extSeo.advancedSeo.contentSeo.items.multimedia.images > 0 ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.contentSeo.items.multimedia.images}個
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">リスト構造</span>
+                  <span className={extSeo.advancedSeo.contentSeo.items.lists.ordered + extSeo.advancedSeo.contentSeo.items.lists.unordered > 0 ? 'text-green-600' : 'text-red-600'}>
+                    順序: {extSeo.advancedSeo.contentSeo.items.lists.ordered}個, 箇条書き: {extSeo.advancedSeo.contentSeo.items.lists.unordered}個
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">テーブル</span>
+                  <span className={extSeo.advancedSeo.contentSeo.items.tables.count > 0 ? 'text-green-600' : 'text-gray-600'}>
+                    {extSeo.advancedSeo.contentSeo.items.tables.count}個 (キャプション付き: {extSeo.advancedSeo.contentSeo.items.tables.withCaption}個)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ユーザー体験詳細 */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="mr-2">👥</span>
+              ユーザー体験（{extSeo.advancedSeo.userExperience.score}点）
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">パンくずリスト</span>
+                  <span className={extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs ? '✅ あり' : '❌ なし'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">目次（TOC）</span>
+                  <span className={extSeo.advancedSeo.userExperience.items.navigation.toc ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.userExperience.items.navigation.toc ? '✅ あり' : '❌ なし'}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">スキップリンク</span>
+                  <span className={extSeo.advancedSeo.userExperience.items.accessibility.skipLinks ? 'text-green-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.userExperience.items.accessibility.skipLinks ? '✅ あり' : '❌ なし'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium">ARIA属性</span>
+                  <span className={extSeo.advancedSeo.userExperience.items.accessibility.ariaLabels > 3 ? 'text-green-600' : extSeo.advancedSeo.userExperience.items.accessibility.ariaLabels > 0 ? 'text-yellow-600' : 'text-red-600'}>
+                    {extSeo.advancedSeo.userExperience.items.accessibility.ariaLabels}個
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 総合的な改善提案 */}
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-6 border border-yellow-200">
+            <h4 className="text-lg font-bold text-orange-800 mb-4 flex items-center">
+              <span className="mr-2">💡</span>
+              優先すべき改善アクション
+            </h4>
+            <div className="space-y-2 text-sm">
               {!extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists && (
-                <li>🔧 Canonicalタグを設定して重複コンテンツを防ぐ</li>
+                <div className="flex items-start gap-2 p-3 bg-white rounded-lg border border-yellow-200">
+                  <span className="text-red-500 font-bold text-xs">高</span>
+                  <div>
+                    <div className="font-medium text-gray-900">Canonicalタグの設定</div>
+                    <div className="text-gray-600 text-xs mt-1">重複コンテンツを防ぎ、SEO評価を正しく集約するため</div>
+                  </div>
+                </div>
               )}
               {!extSeo.advancedSeo.technicalSeo.items.jsonLd.exists && (
-                <li>🔧 構造化データ（JSON-LD）を追加してリッチスニペット表示を狙う</li>
-              )}
-              {extSeo.advancedSeo.performanceSeo.items.htmlSize.rating === 'too-heavy' && (
-                <li>⚡ HTMLサイズを削減してページ読み込み速度を改善</li>
+                <div className="flex items-start gap-2 p-3 bg-white rounded-lg border border-yellow-200">
+                  <span className="text-orange-500 font-bold text-xs">中</span>
+                  <div>
+                    <div className="font-medium text-gray-900">構造化データ（JSON-LD）の追加</div>
+                    <div className="text-gray-600 text-xs mt-1">検索結果でのリッチスニペット表示を可能にする</div>
+                  </div>
+                </div>
               )}
               {extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'thin' && (
-                <li>📝 コンテンツ量を増やして情報の充実度を高める（推奨: 1000語以上）</li>
+                <div className="flex items-start gap-2 p-3 bg-white rounded-lg border border-yellow-200">
+                  <span className="text-red-500 font-bold text-xs">高</span>
+                  <div>
+                    <div className="font-medium text-gray-900">コンテンツ量の充実</div>
+                    <div className="text-gray-600 text-xs mt-1">現在{extSeo.advancedSeo.contentSeo.items.wordCount.value}語 → より詳細で価値のある情報を追加</div>
+                  </div>
+                </div>
               )}
               {!extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs && (
-                <li>🧭 パンくずリストを追加してナビゲーションを改善</li>
+                <div className="flex items-start gap-2 p-3 bg-white rounded-lg border border-yellow-200">
+                  <span className="text-yellow-500 font-bold text-xs">低</span>
+                  <div>
+                    <div className="font-medium text-gray-900">パンくずリストの追加</div>
+                    <div className="text-gray-600 text-xs mt-1">ユーザビリティとクローラビリティの向上</div>
+                  </div>
+                </div>
               )}
-            </ul>
+            </div>
+          </div>
+
+          {/* 評価項目完了状況 */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <span className="mr-2">📋</span>
+              SEO評価項目完了状況
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-3">🔧 技術的SEO</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>Canonical URL</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.technicalSeo.items.canonicalUrl.exists ? '完了' : '未完了'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>JSON-LD構造化データ</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.technicalSeo.items.jsonLd.exists ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.technicalSeo.items.jsonLd.exists ? '完了' : '未完了'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Open Graph</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.technicalSeo.items.openGraph.complete ? 'bg-green-100 text-green-700' : extSeo.advancedSeo.technicalSeo.items.openGraph.exists ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.technicalSeo.items.openGraph.complete ? '完了' : extSeo.advancedSeo.technicalSeo.items.openGraph.exists ? '部分' : '未完了'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Twitter Card</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.technicalSeo.items.twitterCard.exists ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.technicalSeo.items.twitterCard.exists ? '完了' : '未完了'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>HTTPS/SSL</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.technicalSeo.items.ssl.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.technicalSeo.items.ssl.enabled ? '完了' : '未完了'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-3">📝 コンテンツ & UX</h5>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>文字数評価</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'comprehensive' || extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'optimal' ? 'bg-green-100 text-green-700' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'adequate' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.contentSeo.items.wordCount.value}語 ({extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'thin' ? '少ない' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'adequate' ? '適切' : extSeo.advancedSeo.contentSeo.items.wordCount.rating === 'optimal' ? '最適' : '包括的'})
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>画像要素</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.contentSeo.items.multimedia.images > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.contentSeo.items.multimedia.images}個
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>リスト構造</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${(extSeo.advancedSeo.contentSeo.items.lists.ordered + extSeo.advancedSeo.contentSeo.items.lists.unordered) > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.contentSeo.items.lists.ordered + extSeo.advancedSeo.contentSeo.items.lists.unordered}個
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>パンくずリスト</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.userExperience.items.navigation.breadcrumbs ? '完了' : '未完了'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>目次（TOC）</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${extSeo.advancedSeo.userExperience.items.navigation.toc ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {extSeo.advancedSeo.userExperience.items.navigation.toc ? '完了' : '未完了'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                <div className="flex items-center justify-between">
+                  <span>📈 SEO完了率：</span>
+                  <span className="font-semibold text-lg">
+                    {Math.round(seoOverall)}% 
+                    <span className="text-xs ml-1">
+                      ({seoOverall >= 90 ? '優秀' : seoOverall >= 70 ? '良好' : seoOverall >= 50 ? '改善必要' : '要対策'})
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -86,6 +86,30 @@ serve(async (req) => {
     console.log('[analyze] Evaluating with LLM...')
     const { result: llmResult, usage } = await evaluateWithLLM(content, seoResult)
 
+    // 3.5. LLM評価結果をAdvanced SEOに統合
+    console.log('[analyze] Integrating LLM results with Advanced SEO...')
+    if (llmResult.contentQuality?.wordCountEvaluation && seoResult.advancedSeo) {
+      // LLMの文字数評価をAdvanced SEOに反映
+      seoResult.advancedSeo.contentSeo.items.wordCount.rating = llmResult.contentQuality.wordCountEvaluation.rating
+      
+      // LLMの推奨に基づいてAdvanced SEOの評価も更新
+      if (llmResult.advancedSeoIntegrated?.contentSeoRecommendations) {
+        const targetWordCount = llmResult.advancedSeoIntegrated.contentSeoRecommendations.targetWordCount
+        if (targetWordCount) {
+          // 目標文字数に基づいてスコアを動的調整
+          const currentWordCount = seoResult.advancedSeo.contentSeo.items.wordCount.value
+          const ratio = currentWordCount / targetWordCount
+          let scoreAdjustment = 0
+          if (ratio < 0.5) scoreAdjustment = -30  // 目標の50%未満
+          else if (ratio < 0.8) scoreAdjustment = -15  // 目標の80%未満
+          else if (ratio > 2.0) scoreAdjustment = -10  // 目標の200%超
+          
+          seoResult.advancedSeo.contentSeo.score = Math.max(0, Math.min(100, 
+            seoResult.advancedSeo.contentSeo.score + scoreAdjustment))
+        }
+      }
+    }
+
     // 4. スコア計算
     const llmoOverall = Math.round(
       (llmResult.aiCitation.score +
@@ -671,58 +695,92 @@ async function evaluateWithLLM(text: string, seoResult: any): Promise<{ result: 
 `
 
   const prompt = `
-あなたはLLMO（AI検索最適化）とSEO両方の専門評価者です。
-以下のWebページを読み、AI検索エンジンと従来の検索エンジン両方の観点から評価してください。
+あなたはLLMO（AI検索最適化）とAdvanced SEO統合評価の専門家です。
+以下のWebページを読み、AI検索エンジンと従来検索エンジン両方の観点から包括的に評価してください。
 
-# ページ本文
-${text.slice(0, 7000)}
+# ページ本文（${text.length}文字）
+${text.slice(0, 10000)}
 
 ${seoSummary}
 
-# 評価項目
+# 統合評価項目
 
 ## 1. AI引用スコア（0-100）
 - LLMが回答素材として使いやすいかどうか
 - 情報の明確性、構造化度、再利用性を評価
 
-## 2. 質問対応力の評価（重要）
+## 2. コンテンツ品質評価（重要）
+以下の観点でコンテンツを総合的に評価：
+
+### 2-1. 文字数と情報密度
+- 現在の文字数: ${text.length}文字
+- **質的評価基準**: 文字数だけでなく、情報の深さ、実用性、独自性を重視
+- 薄いコンテンツ、適切なコンテンツ、包括的コンテンツのどれに該当するか
+- このテーマ・トピックに対して「最適な文字数範囲」を算出
+
+### 2-2. 情報の構造化度
+- 見出し階層、箇条書き、Q&A形式、図表の活用状況
+- LLMが情報を抽出しやすい構造になっているか
+
+### 2-3. 専門性と信頼性
+- E-E-A-T（Experience, Expertise, Authoritativeness, Trustworthiness）評価
+- 情報源、データ、実体験の記載状況
+
+## 3. 質問対応力の評価（重要）
 以下の3カテゴリで質問をリストアップしてください：
 
-### 2-1. 現在答えられる質問（answerable）
+### 3-1. 現在答えられる質問（answerable）
 - このページの現在の内容で十分に回答できる質問（5-10個）
 - AIが引用して回答を生成できるレベルの質問
 
-### 2-2. 部分的に答えられる質問（partial）
+### 3-2. 部分的に答えられる質問（partial）
 - 情報が不足しているが、一部は答えられる質問（3-5個）
 - 何が足りないかも含めて記載
 
-### 2-3. 改善後に答えられるようになる質問（afterImprovement）
+### 3-3. 改善後に答えられるようになる質問（afterImprovement）
 - 提案する改善を実施すれば答えられるようになる質問（5-10個）
 - 具体的で検索されやすい質問形式で記載
 
-## 3. 概念カバレッジ（0-100）
+## 4. 概念カバレッジ（0-100）
 - このテーマで一般的にカバーすべき概念をどれだけ網羅しているか
 - カバー済み概念と、不足している概念をリストアップ
 
-## 4. 構造スコア（0-100）
+## 5. 構造スコア（0-100）
 - 見出し階層、箇条書き、Q&A形式などLLMが読み取りやすい構造か
 - 問題点を具体的に指摘
 
-## 5. E-E-A-Tスコア（0-100）
+## 6. E-E-A-Tスコア（0-100）
 - 専門性、経験、権威性、信頼性
 - 著者情報、参考文献、更新日などの有無
 
-## 6. 具体的な改善案（最重要）
-**LLMO改善案**と**SEO改善案**を両方含めて、優先度の高い順に8-12個の改善案を提案：
+## 7. Advanced SEO統合評価
+以下の項目を統合的に評価し、固定基準ではなくコンテンツ特性に応じた動的評価を実施：
+
+### 7-1. 技術的SEO評価
+- 現在のCanonical URL、構造化データ、OGPの状況を踏まえた改善優先度
+- 実装すべき技術的改善の具体的提案
+
+### 7-2. コンテンツSEO動的評価
+- このトピック・業界に適したコンテンツ量の推奨値（固定1000語ではなく）
+- 必要な画像・メディアの種類と数量
+- 推奨するリスト・テーブル構造
+
+### 7-3. ユーザー体験最適化
+- このページタイプに必要なナビゲーション要素
+- アクセシビリティの具体的改善点
+
+## 8. 具体的な改善案（最重要）
+**LLMO改善案**、**SEO改善案**、**Advanced SEO改善案**を統合して、優先度の高い順に10-15個の改善案を提案：
 
 各改善案には必ず以下を含めること：
 - **priority**: "high" / "medium" / "low"
-- **category**: "structure" / "content" / "eeat" / "question" / "concept" / "seo-title" / "seo-meta" / "seo-heading" / "seo-image" / "seo-link" / "seo-schema"
-- **type**: "llmo" / "seo" / "both"（どちらの改善か）
+- **category**: "structure" / "content" / "eeat" / "question" / "concept" / "technical-seo" / "content-seo" / "ux-seo"
+- **type**: "llmo" / "seo" / "advanced-seo" / "integrated"
 - **issue**: 問題点を1文で説明
 - **action**: 具体的な改善アクションを1-2文で説明
 - **example**: 追加すべき文章やコードの具体例
 - **enablesQuestions**: この改善で答えられるようになる質問（1-3個）
+- **expectedImpact**: "低い" / "中程度" / "高い" / "非常に高い"
 
 # 出力形式（JSON）
 
@@ -750,31 +808,57 @@ ${seoSummary}
   },
   "structure": {
     "score": 数値(0-100),
-    "issues": ["問題点1", "問題点2"]
+    "issues": ["問題点1", "問題点2"],
+    "strengths": ["構造的な強み1", "強み2"]
   },
   "eeat": {
     "score": 数値(0-100),
     "strengths": ["強み1", "強み2"],
     "weaknesses": ["弱み1", "弱み2"]
   },
+  "contentQuality": {
+    "wordCountEvaluation": {
+      "currentLength": 数値,
+      "rating": "thin" / "adequate" / "comprehensive" / "excessive",
+      "optimalRange": {"min": 数値, "max": 数値},
+      "reasoning": "このトピックに最適な文字数範囲の理由",
+      "qualityScore": 数値(0-100)
+    },
+    "informationDensity": {
+      "score": 数値(0-100),
+      "assessment": "情報密度の評価コメント"
+    },
+    "uniqueValue": {
+      "score": 数値(0-100),
+      "uniqueAspects": ["独自性のある要素1", "要素2"]
+    }
+  },
+  "advancedSeoIntegrated": {
+    "technicalSeoRecommendations": {
+      "canonicalUrl": {"needed": true/false, "priority": "high/medium/low", "reasoning": "理由"},
+      "structuredData": {"needed": true/false, "priority": "high/medium/low", "schemaType": "推奨スキーマタイプ"},
+      "openGraph": {"needed": true/false, "priority": "high/medium/low", "missingElements": ["欠けている要素"]}
+    },
+    "contentSeoRecommendations": {
+      "targetWordCount": 数値,
+      "imageRecommendations": {"count": 数値, "types": ["推奨画像タイプ"]},
+      "structureEnhancements": ["推奨構造改善1", "改善2"]
+    },
+    "userExperienceRecommendations": {
+      "navigationNeeds": ["必要なナビゲーション要素"],
+      "accessibilityImprovements": ["アクセシビリティ改善"]
+    }
+  },
   "improvements": [
     {
       "priority": "high",
-      "category": "structure",
-      "type": "llmo",
+      "category": "content-seo",
+      "type": "integrated",
       "issue": "問題点の説明",
       "action": "具体的な改善アクション",
       "example": "追加すべき文章や見出しの例",
-      "enablesQuestions": ["この改善で答えられるようになる質問"]
-    },
-    {
-      "priority": "high",
-      "category": "seo-meta",
-      "type": "seo",
-      "issue": "meta descriptionがない",
-      "action": "検索結果に表示される説明文を追加",
-      "example": "<meta name=\\"description\\" content=\\"...\\">",
-      "enablesQuestions": []
+      "enablesQuestions": ["この改善で答えられるようになる質問"],
+      "expectedImpact": "非常に高い"
     }
   ]
 }
@@ -791,8 +875,8 @@ ${seoSummary}
           model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
-          // 4000で長さ切れが出たためさらに増やす
-          max_completion_tokens: 15000
+          // LLMをフル活用してより詳細な統合評価を実施
+          max_completion_tokens: 20000
         })
 
         const choice = res.choices?.[0]
