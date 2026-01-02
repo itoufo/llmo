@@ -95,6 +95,11 @@ serve(async (req) => {
       seoResult.advancedSeo.contentSeo.score = llmResult.advancedSeoScores.contentSeo || 50
       seoResult.advancedSeo.userExperience.score = llmResult.advancedSeoScores.userExperience || 50
       
+      // 文字数評価もLLMが決定
+      if (llmResult.advancedSeoScores.wordCountRating) {
+        seoResult.advancedSeo.contentSeo.items.wordCount.rating = llmResult.advancedSeoScores.wordCountRating
+      }
+      
       // スコアの根拠を記録
       if (llmResult.advancedSeoScores.reasoning) {
         seoResult.advancedSeo.scoreReasoning = llmResult.advancedSeoScores.reasoning
@@ -862,6 +867,7 @@ ${seoSummary}
     "performanceSeo": 数値(0-100),
     "contentSeo": 数値(0-100),
     "userExperience": 数値(0-100),
+    "wordCountRating": "thin" / "adequate" / "optimal" / "comprehensive",
     "contentReasoning": "コンテンツSEOスコアの詳細根拠（何点配分でどう判断したか）",
     "reasoning": {
       "technical": "技術的SEOスコアの根拠",
