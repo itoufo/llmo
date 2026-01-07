@@ -1,25 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)",
-      "Bash(npx tailwindcss init -p)",
-      "Bash(./node_modules/.bin/tailwindcss:*)",
-      "Bash(npm run build:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(git checkout:*)",
-      "Bash(git commit:*)",
-      "Bash(brew install:*)",
-      "Bash(npx supabase:*)",
-      "Bash(git add:*)",
-      "Bash(netlify deploy:*)",
-      "Bash(netlify sites:list:*)",
-      "Bash(netlify link:*)",
-      "WebFetch(domain:eigobu.jp)",
-      "Bash(curl:*)",
-      "Bash(supabase functions deploy:*)",
-      "Bash(grep:*)"
+      "mcp__ruv-swarm",
+      "mcp__claude-flow@alpha",
+      "mcp__flow-nexus",
+      "mcp__claude-flow__memory_usage"
     ],
-    "deny": [],
-    "ask": []
-  }
+    "deny": []
+  },
+  "enabledMcpjsonServers": [
+    "claude-flow",
+    "ruv-swarm",
+    "supabase",
+    "claude-flow@alpha",
+    "flow-nexus"
+  ]
 }

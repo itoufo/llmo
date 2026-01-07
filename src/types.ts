@@ -177,3 +177,27 @@ export interface Profile {
   created_at: string
   updated_at: string
 }
+
+// サイトマップ関連
+export interface SitemapUrl {
+  loc: string
+  lastmod?: string
+  changefreq?: string
+  priority?: string
+}
+
+export interface SitemapResult {
+  domain: string
+  sitemapUrl: string
+  urls: SitemapUrl[]
+  totalFound: number
+  truncated: boolean
+}
+
+export interface SitemapUrlWithStatus extends SitemapUrl {
+  selected: boolean
+  status: 'pending' | 'analyzing' | 'completed' | 'error'
+  score?: number
+  analyzedAt?: string
+  error?: string
+}

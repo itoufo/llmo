@@ -1,14 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { UrlForm } from './UrlForm'
+import { SitemapAnalyzer } from './SitemapAnalyzer'
 import { ScoreRadar } from './ScoreRadar'
 import { ScoreSummary } from './ScoreSummary'
 import { QuestionsList } from './QuestionsList'
 import { ImprovementsList } from './ImprovementsList'
 import { SeoSummary } from './SeoSummary'
 import { Tooltip } from './Tooltip'
+import { useAuth } from '../contexts/AuthContext'
 import type { AnalyzeResult, HistoryStorage } from '../types'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+
+type TabType = 'single' | 'sitemap'
 
 const HISTORY_KEY = 'llmo-doctor-history-v2'
 const MAX_RESULTS_PER_PAGE = 5
@@ -26,6 +30,8 @@ function getToday(): string {
 }
 
 export function HomePage() {
+  const { session } = useAuth()
+  const [activeTab, setActiveTab] = useState<TabType>('single')
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [fromCache, setFromCache] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -39,7 +45,9 @@ export function HomePage() {
     if (saved) {
       try {
         setHistoryStorage(JSON.parse(saved))
-      } catch {}
+      } catch {
+        // Ignore parse errors in localStorage data
+      }
     }
   }, [])
 
@@ -102,6 +110,38 @@ export function HomePage() {
       saveToHistory(newResult)
     }
   }, [saveToHistory])
+
+  // Analyze a single URL (for SitemapAnalyzer)
+  const analyzeUrl = useCallback(async (url: string): Promise<AnalyzeResult> => {
+    // Check cache first
+    const cached = getCachedResult(url)
+    if (cached) {
+      return cached
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+    const authToken = session?.access_token || supabaseAnonKey
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ url })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to analyze')
+    }
+
+    // Save to history
+    saveToHistory(data)
+    return data
+  }, [session, getCachedResult, saveToHistory])
 
   // Get domain list for display
   const domainList = Object.values(historyStorage.domains).sort((a, b) => {
@@ -226,7 +266,48 @@ export function HomePage() {
         </p>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex justify-center mb-6 animate-in-delayed">
+        <div className="inline-flex bg-gray-100 rounded-xl p-1">
+          <button
+            onClick={() => { setActiveTab('single'); setResult(null); }}
+            className={`
+              px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+              ${activeTab === 'single'
+                ? 'bg-white text-indigo-600 shadow-md'
+                : 'text-gray-600 hover:text-gray-900'
+              }
+            `}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              単一URL診断
+            </span>
+          </button>
+          <button
+            onClick={() => { setActiveTab('sitemap'); setResult(null); }}
+            className={`
+              px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+              ${activeTab === 'sitemap'
+                ? 'bg-white text-emerald-600 shadow-md'
+                : 'text-gray-600 hover:text-gray-900'
+              }
+            `}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              サイト全体診断
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Input Form */}
+      {activeTab === 'single' ? (
       <div className="card-elevated p-8 mb-10 animate-in-delayed">
         <UrlForm
           onResult={handleResult}
@@ -305,6 +386,14 @@ export function HomePage() {
           </div>
         )}
       </div>
+      ) : (
+        <div className="mb-10 animate-in-delayed">
+          <SitemapAnalyzer
+            onAnalyzeUrl={analyzeUrl}
+            getCachedResult={getCachedResult}
+          />
+        </div>
+      )}
 
       {/* Results */}
       {result && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { 
   User, 
@@ -63,6 +63,14 @@ export function Settings() {
     alert_threshold: 60
   })
 
+  const loadNotificationSettings = useCallback(async () => {
+    // 通知設定をローカルストレージから読み込み（実際はDBから）
+    const saved = localStorage.getItem(`notifications_${user?.id}`)
+    if (saved) {
+      setNotifications(JSON.parse(saved))
+    }
+  }, [user?.id])
+
   useEffect(() => {
     if (profile) {
       setProfileSettings({
@@ -82,15 +90,7 @@ export function Settings() {
     }
 
     loadNotificationSettings()
-  }, [profile, tenant])
-
-  async function loadNotificationSettings() {
-    // 通知設定をローカルストレージから読み込み（実際はDBから）
-    const saved = localStorage.getItem(`notifications_${user?.id}`)
-    if (saved) {
-      setNotifications(JSON.parse(saved))
-    }
-  }
+  }, [profile, tenant, loadNotificationSettings])
 
   // メッセージの自動非表示
   useEffect(() => {

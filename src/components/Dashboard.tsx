@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Analysis } from '../types'
@@ -26,14 +26,7 @@ export function Dashboard() {
     mostCommonIssue: ''
   })
 
-  useEffect(() => {
-    if (user) {
-      loadAnalyses()
-      loadStats()
-    }
-  }, [user, tenant])
-
-  async function loadAnalyses() {
+  const loadAnalyses = useCallback(async () => {
     try {
       const query = supabase
         .from('analyses')
@@ -57,9 +50,9 @@ export function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenant?.id, user?.id])
 
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     try {
       const now = new Date()
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -107,7 +100,14 @@ export function Dashboard() {
     } catch (error) {
       console.error('Failed to load stats:', error)
     }
-  }
+  }, [tenant?.id, user?.id])
+
+  useEffect(() => {
+    if (user) {
+      loadAnalyses()
+      loadStats()
+    }
+  }, [user, tenant, loadAnalyses, loadStats])
 
   async function deleteAnalysis(id: string) {
     if (!confirm('この診断結果を削除してもよろしいですか？')) return
