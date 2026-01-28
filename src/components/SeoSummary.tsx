@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { SEOResult } from '../types'
 import { Tooltip } from './Tooltip'
+import { AdvancedSeoSection } from './seo/AdvancedSeoSection'
+import { ImprovementSuggestions } from './seo/ImprovementSuggestions'
+import { CompletionStatus } from './seo/CompletionStatus'
 
 interface Props {
   seo: SEOResult
@@ -19,6 +22,12 @@ interface ExtendedSEOResult extends SEOResult {
   structured: SEOResult['structured'] & { htmlFix?: string }
   ogp?: { hasOgp: boolean; issues: string[]; htmlFix?: string }
   headHtml?: string
+  advancedSeo?: {
+    technicalSeo: { score: number; items: any }
+    performanceSeo: { score: number; items: any }
+    contentSeo: { score: number; items: any }
+    userExperience: { score: number; items: any }
+  }
 }
 
 export function SeoSummary({ seo, seoOverall }: Props) {
@@ -26,11 +35,14 @@ export function SeoSummary({ seo, seoOverall }: Props) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
   const extSeo = seo as ExtendedSEOResult
+  
+  // デバッグ: Advanced SEOデータの確認
+  console.log('SeoSummary - Advanced SEO data:', extSeo.advancedSeo)
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 bg-green-100'
-    if (score >= 60) return 'text-yellow-600 bg-yellow-100'
-    return 'text-red-600 bg-red-100'
+    if (score >= 80) return 'text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200'
+    if (score >= 60) return 'text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'
+    return 'text-rose-700 bg-gradient-to-r from-rose-50 to-red-50 border-rose-200'
   }
 
   const toggleExpand = (label: string) => {
@@ -60,13 +72,17 @@ export function SeoSummary({ seo, seoOverall }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-green-600 flex items-center">
-          <span className="mr-2">🔍</span>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-2xl font-bold text-gradient-blue flex items-center">
+          <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mr-3 shadow-md">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
           SEO診断
           <Tooltip text="SEO（Search Engine Optimization）= Google等の検索エンジンで上位表示されるための最適化指標です。タイトル、メタ情報、見出し構造、画像最適化などを評価します。" />
         </h2>
-        <div className={`px-4 py-2 rounded-full font-bold ${getScoreColor(seoOverall)}`}>
+        <div className={`px-5 py-2.5 rounded-xl font-bold border ${getScoreColor(seoOverall)}`}>
           {seoOverall}点
         </div>
       </div>
@@ -76,26 +92,26 @@ export function SeoSummary({ seo, seoOverall }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {extSeo.headings && (
         <>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">H1</div>
-          <div className="text-lg font-bold">{extSeo.headings.h1Count}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">H1</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.headings.h1Count}</div>
         </div>
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">H2</div>
-          <div className="text-lg font-bold">{extSeo.headings.h2Count}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">H2</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.headings.h2Count}</div>
         </div>
         </>
         )}
         {extSeo.images && (
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">画像</div>
-          <div className="text-lg font-bold">{extSeo.images.withAlt}/{extSeo.images.total}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">画像</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.images.withAlt}/{extSeo.images.total}</div>
         </div>
         )}
         {extSeo.links && (
-        <div className="text-center p-3 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">内部リンク</div>
-          <div className="text-lg font-bold">{extSeo.links.internal}</div>
+        <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
+          <div className="text-sm text-gray-500 font-medium">内部リンク</div>
+          <div className="text-2xl font-bold text-gray-800 mt-1">{extSeo.links.internal}</div>
         </div>
         )}
       </div>
@@ -132,13 +148,93 @@ export function SeoSummary({ seo, seoOverall }: Props) {
         </div>
       )}
 
+      {/* Advanced SEO 詳細診断 */}
+      {extSeo.advancedSeo && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
+            <h3 className="text-xl font-bold text-indigo-800 mb-6 flex items-center">
+              <span className="mr-3">🤖</span>
+              統合SEO診断結果（LLM × Advanced SEO）
+            </h3>
+            
+            {/* スコア算出方法の説明 */}
+            <div className="bg-white rounded-lg p-4 mb-6 border border-indigo-100">
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <span className="mr-2">🤖</span>
+                AIによる統合評価システム
+              </h4>
+              <div className="text-sm text-gray-700 space-y-2">
+                <div>🔹 <strong>基本SEO</strong>：30% の重み（タイトル、メタディスクリプション、見出し、画像など）</div>
+                <div>🔹 <strong>詳細SEO</strong>：70% の重み（技術的SEO、パフォーマンス、コンテンツ、UX）</div>
+                <div>🔹 <strong>LLM評価</strong>：コンテンツの質、情報密度、独自性を動的に評価</div>
+                <div className="text-xs text-indigo-600 bg-indigo-50 p-2 rounded mt-3">
+                  💡 固定基準ではなく、コンテンツの特性に応じてAIが最適な評価基準を算出
+                </div>
+              </div>
+            </div>
+            
+            {/* サマリースコア */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">技術的SEO</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.technicalSeo.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.technicalSeo.score}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">パフォーマンス</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.performanceSeo.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.performanceSeo.score}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">コンテンツSEO</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.contentSeo.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.contentSeo.score}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-indigo-100 text-center">
+                <div className="text-xs text-gray-600 mb-2 font-medium">ユーザー体験</div>
+                <div className={`text-3xl font-bold ${getScoreColor(extSeo.advancedSeo.userExperience.score).split(' ')[0]}`}>
+                  {extSeo.advancedSeo.userExperience.score}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced SEO詳細セクション */}
+          <AdvancedSeoSection advancedSeo={extSeo.advancedSeo} />
+
+          {/* 総合的な改善提案 */}
+          <ImprovementSuggestions advancedSeo={extSeo.advancedSeo} />
+
+          {/* 評価項目完了状況 */}
+          <CompletionStatus advancedSeo={extSeo.advancedSeo} />
+          
+          {/* SEO完了率サマリー */}
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <div className="text-sm text-gray-600">
+              <div className="flex items-center justify-between">
+                <span>📈 SEO完了率：</span>
+                <span className="font-semibold text-lg">
+                  {Math.round(seoOverall)}% 
+                  <span className="text-xs ml-1">
+                    ({seoOverall >= 90 ? '優秀' : seoOverall >= 70 ? '良好' : seoOverall >= 50 ? '改善必要' : '要対策'})
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* チェックリスト */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {items.map(item => (
-          <div key={item.label} className="border rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium">{item.label}</span>
-              <span className={`px-2 py-1 rounded text-sm font-bold ${getScoreColor(item.score)}`}>
+          <div key={item.label} className="border-2 border-gray-100 rounded-2xl p-5 hover:shadow-md transition-all duration-300 hover:border-gray-200 bg-white">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold text-gray-800">{item.label}</span>
+              <span className={`px-3 py-1.5 rounded-xl text-sm font-bold border ${getScoreColor(item.score)}`}>
                 {item.score}
               </span>
             </div>
@@ -291,13 +387,13 @@ export function SeoSummary({ seo, seoOverall }: Props) {
         <div className="space-y-2 text-sm">
           {extSeo.canonical && (
           <div className="flex items-center">
-            <span className={extSeo.canonical.hasCanonical ? 'text-green-600' : 'text-yellow-600'}>
-              {extSeo.canonical.hasCanonical ? '✅' : '⚠️'}
+            <span className={extSeo.canonical?.hasCanonical ? 'text-green-600' : 'text-yellow-600'}>
+              {extSeo.canonical?.hasCanonical ? '✅' : '⚠️'}
             </span>
             <span className="ml-2">
-              Canonical URL: {extSeo.canonical.hasCanonical ? extSeo.canonical.url : '未設定'}
+              Canonical URL: {extSeo.canonical?.hasCanonical ? extSeo.canonical.url : '未設定'}
             </span>
-            {!extSeo.canonical.hasCanonical && extSeo.canonical.htmlFix && (
+            {!extSeo.canonical?.hasCanonical && extSeo.canonical?.htmlFix && (
               <button
                 onClick={() => copyToClipboard(extSeo.canonical.htmlFix || '')}
                 className="ml-2 text-xs text-blue-600 hover:underline"
@@ -309,11 +405,11 @@ export function SeoSummary({ seo, seoOverall }: Props) {
           )}
           {extSeo.structured && (
           <div className="flex items-center">
-            <span className={extSeo.structured.hasSchema ? 'text-green-600' : 'text-yellow-600'}>
-              {extSeo.structured.hasSchema ? '✅' : '⚠️'}
+            <span className={extSeo.structured?.hasSchema ? 'text-green-600' : 'text-yellow-600'}>
+              {extSeo.structured?.hasSchema ? '✅' : '⚠️'}
             </span>
             <span className="ml-2">
-              構造化データ: {extSeo.structured.hasSchema ? extSeo.structured.types.join(', ') : '未設定'}
+              構造化データ: {extSeo.structured?.hasSchema ? extSeo.structured.types?.join(', ') : '未設定'}
             </span>
           </div>
           )}
@@ -328,7 +424,7 @@ export function SeoSummary({ seo, seoOverall }: Props) {
       )}
 
       {/* 見出し構造のプレビュー */}
-      {extSeo.headings && Array.isArray(extSeo.headings.structure) && extSeo.headings.structure.length > 0 && (
+      {extSeo.headings?.structure && Array.isArray(extSeo.headings.structure) && extSeo.headings.structure.length > 0 && (
         <div className="p-4 bg-blue-50 rounded-lg">
           <h3 className="font-medium mb-3 text-blue-800">現在の見出し構造</h3>
           <ul className="text-sm space-y-1 font-mono">

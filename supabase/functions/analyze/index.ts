@@ -1,11 +1,50 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import OpenAI from 'https://esm.sh/openai@4'
+import { analyzeAdvancedSeo } from './seo-advanced.ts'
+import { analyzeSEO } from './seo-analyzer.ts'
+import { evaluateWithLLM } from './evaluator.ts'
+import { AnalysisResult } from './types.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+// ユーザー情報を取得
+async function getUserInfo(req: Request): Promise<{ userId: string | null; tenantId: string | null }> {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: null, tenantId: null }
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { userId: null, tenantId: null }
+    }
+
+    // デフォルトテナントを取得
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('default_tenant_id')
+      .eq('id', user.id)
+      .single()
+
+    return {
+      userId: user.id,
+      tenantId: profile?.default_tenant_id || null
+    }
+  } catch (e) {
+    console.warn('[analyze] Failed to get user info:', e)
+    return { userId: null, tenantId: null }
+  }
 }
 
 serve(async (req) => {
@@ -24,6 +63,10 @@ serve(async (req) => {
       })
     }
 
+    // ユーザー情報取得（未ログインでも利用可能）
+    const { userId, tenantId } = await getUserInfo(req)
+    console.log(`[analyze] User: ${userId || 'anonymous'}, Tenant: ${tenantId || 'none'}`)
+
     console.log(`[analyze] Starting analysis for: ${url}`)
 
     // 1. HTML取得（生HTMLも保持してSEO分析用に使う）
@@ -39,14 +82,92 @@ serve(async (req) => {
 
     // 2. SEO診断（HTMLから抽出）
     console.log('[analyze] Analyzing SEO...')
-    const seoResult = analyzeSEO(html, url, content)
+    const seoResult = analyzeSEO(html)
+    
+    // 2.5. Advanced SEO診断
+    console.log('[analyze] Analyzing Advanced SEO...')
+    const advancedSeoResult = await analyzeAdvancedSeo(html, url)
+    seoResult.advancedSeo = advancedSeoResult
 
     // 3. LLM評価（LLMO + SEOコメント）
     console.log('[analyze] Evaluating with LLM...')
-    const llmResult = await evaluateWithLLM(content, seoResult)
+    const { result: llmResult, usage } = await evaluateWithLLM(content, seoResult)
 
-    // 4. スコア計算
-    const llmoOverall = Math.round(
+    // 3.5. LLM評価結果をAdvanced SEOに統合（LLMが全スコアを決定）
+    console.log('[analyze] Integrating LLM results with Advanced SEO...')
+    if (llmResult.advancedSeoScores && seoResult.advancedSeo) {
+      // LLMが算出した全スコアを直接適用
+      seoResult.advancedSeo.technicalSeo.score = llmResult.advancedSeoScores.technicalSeo || 50
+      seoResult.advancedSeo.performanceSeo.score = llmResult.advancedSeoScores.performanceSeo || 50
+      seoResult.advancedSeo.contentSeo.score = llmResult.advancedSeoScores.contentSeo || 50
+      seoResult.advancedSeo.userExperience.score = llmResult.advancedSeoScores.userExperience || 50
+      
+      // 文字数評価もLLMが決定
+      if (llmResult.advancedSeoScores.wordCountRating) {
+        seoResult.advancedSeo.contentSeo.items.wordCount.rating = llmResult.advancedSeoScores.wordCountRating
+      }
+      
+      // スコアの根拠を記録
+      if (llmResult.advancedSeoScores.reasoning) {
+        seoResult.advancedSeo.scoreReasoning = llmResult.advancedSeoScores.reasoning
+      }
+      
+      // コンテンツSEOのブレークダウンを更新
+      if (seoResult.advancedSeo.contentSeo.scoreBreakdown) {
+        seoResult.advancedSeo.contentSeo.scoreBreakdown.llmScore = llmResult.advancedSeoScores.contentSeo
+        seoResult.advancedSeo.contentSeo.scoreBreakdown.llmReasoning = llmResult.advancedSeoScores.contentReasoning
+        
+        // 点数内訳を計算（100点満点の内訳）
+        const contentScore = llmResult.advancedSeoScores.contentSeo
+        
+        // コンテンツの実際の状況に基づいて点数配分
+        const wordCount = seoResult.advancedSeo.contentSeo.items.wordCount.value
+        const hasImages = seoResult.advancedSeo.contentSeo.items.multimedia.images > 0
+        const hasLists = (seoResult.advancedSeo.contentSeo.items.lists.ordered + 
+                         seoResult.advancedSeo.contentSeo.items.lists.unordered) > 0
+        const hasTables = seoResult.advancedSeo.contentSeo.items.tables.count > 0
+        
+        // 文字数による点数（40点満点）
+        let wordCountScore = 0
+        if (wordCount >= 2000) wordCountScore = 40
+        else if (wordCount >= 1500) wordCountScore = 35
+        else if (wordCount >= 1000) wordCountScore = 30
+        else if (wordCount >= 500) wordCountScore = 20
+        else wordCountScore = 10
+        
+        // メディア要素による点数（20点満点）
+        let mediaScore = hasImages ? 15 : 5
+        if (seoResult.advancedSeo.contentSeo.items.multimedia.images >= 3) mediaScore = 20
+        
+        // 構造化による点数（20点満点）
+        let structureScore = 10
+        if (hasLists) structureScore += 5
+        if (hasTables) structureScore += 5
+        
+        // 情報密度による点数（20点満点）- LLMスコアに基づく
+        let densityScore = Math.round((contentScore / 100) * 20)
+        
+        // 合計が100点を超えないよう調整
+        const total = wordCountScore + mediaScore + structureScore + densityScore
+        if (total > contentScore) {
+          const ratio = contentScore / total
+          wordCountScore = Math.round(wordCountScore * ratio)
+          mediaScore = Math.round(mediaScore * ratio)
+          structureScore = Math.round(structureScore * ratio)
+          densityScore = Math.round(densityScore * ratio)
+        }
+        
+        seoResult.advancedSeo.contentSeo.scoreBreakdown.llmDetails = {
+          wordCountScore,
+          mediaScore,
+          structureScore,
+          densityScore
+        }
+      }
+    }
+
+    // 4. スコア計算（LLMが提供した値を優先的に使用）
+    const llmoOverall = llmResult.overallScores?.llmoOverall || Math.round(
       (llmResult.aiCitation.score +
         llmResult.questionFit.score +
         llmResult.coverage.score +
@@ -54,7 +175,8 @@ serve(async (req) => {
         llmResult.eeat.score) / 5
     )
 
-    const seoOverall = Math.round(
+    // LLMが計算したSEOスコアを使用（フォールバックあり）
+    const seoOverall = llmResult.overallScores?.seoOverall || seoResult.seoOverallScore || Math.round(
       (seoResult.title.score +
         seoResult.meta.score +
         seoResult.headings.score +
@@ -63,6 +185,11 @@ serve(async (req) => {
         seoResult.mobile.score +
         seoResult.performance.score) / 7
     )
+
+    // コスト計算（gpt-4o-mini価格: input $0.15/1M, output $0.60/1M）
+    const inputCost = (usage.promptTokens / 1_000_000) * 0.15
+    const outputCost = (usage.completionTokens / 1_000_000) * 0.60
+    const totalCost = inputCost + outputCost
 
     const result = {
       url,
@@ -89,6 +216,7 @@ serve(async (req) => {
       improvements: llmResult.improvements || [],
       questions: llmResult.questions,
       seo: seoResult,
+      scoreBreakdowns: llmResult.overallScores || null,
       details: {
         aiCitationComment: llmResult.aiCitation.comment,
         missingConcepts: llmResult.coverage.missing,
@@ -96,25 +224,61 @@ serve(async (req) => {
         structureIssues: llmResult.structure.issues,
         eeatStrengths: llmResult.eeat.strengths,
         eeatWeaknesses: llmResult.eeat.weaknesses
+      },
+      usage: {
+        model: usage.model,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        cost: {
+          input: inputCost,
+          output: outputCost,
+          total: totalCost
+        }
       }
     }
 
-    // 5. Supabaseに保存
+    // 5. Supabaseに保存（llmoスキーマ）
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { db: { schema: 'llmo' } }
     )
 
     await supabase.from('analyses').insert({
       url,
+      // ユーザー・テナント
+      user_id: userId,
+      tenant_id: tenantId,
+      // LLMO スコア
       ai_citation: result.scores.aiCitation,
       question_fit: result.scores.questionFit,
       coverage: result.scores.coverage,
       structure: result.scores.structure,
       eeat: result.scores.eeat,
+      llmo_overall: llmoOverall,
+      // SEO スコア
+      seo_title: seoResult.title.score,
+      seo_meta: seoResult.meta.score,
+      seo_headings: seoResult.headings.score,
+      seo_images: seoResult.images.score,
+      seo_links: seoResult.links.score,
+      seo_mobile: seoResult.mobile.score,
+      seo_performance: seoResult.performance.score,
+      seo_overall: seoOverall,
+      // 総合
       overall: result.scores.overall,
+      // 詳細
       improvements: result.improvements,
-      raw_result: { llm: llmResult, seo: seoResult }
+      questions: llmResult.questions,
+      seo_details: seoResult,
+      raw_result: { llm: llmResult, seo: seoResult },
+      // LLM使用量
+      model: usage.model,
+      prompt_tokens: usage.promptTokens,
+      completion_tokens: usage.completionTokens,
+      total_tokens: usage.totalTokens,
+      cost_usd: totalCost
     })
 
     console.log(`[analyze] Completed. LLMO: ${llmoOverall}, SEO: ${seoOverall}`)
@@ -124,8 +288,38 @@ serve(async (req) => {
     })
   } catch (error: any) {
     console.error('[analyze] Error:', error)
-    return new Response(JSON.stringify({ error: error.message || 'Analysis failed' }), {
-      status: 500,
+    
+    // エラーの種類に応じて適切なステータスコードとメッセージを返す
+    let status = 500
+    let message = 'Analysis failed'
+    
+    if (error.message === 'PAGE_NOT_FOUND') {
+      status = 404
+      message = 'ページが見つかりません。URLを確認してください。'
+    } else if (error.message === 'UNAUTHORIZED') {
+      status = 401
+      message = 'このページへのアクセスには認証が必要です。'
+    } else if (error.message === 'FORBIDDEN') {
+      status = 403
+      message = 'このページへのアクセスが拒否されました。'
+    } else if (error.message === 'SERVER_ERROR') {
+      status = 502
+      message = 'サーバーエラーが発生しました。しばらく待ってから再試行してください。'
+    } else if (error.message?.startsWith('HTTP_ERROR_')) {
+      status = 400
+      message = `ページの取得に失敗しました。(${error.message})`
+    } else if (error.message?.includes('Failed to fetch content')) {
+      status = 400
+      message = 'ページのコンテンツを取得できませんでした。URLが正しいか確認してください。'
+    } else {
+      message = error.message || 'Analysis failed'
+    }
+    
+    return new Response(JSON.stringify({ 
+      error: message,
+      errorType: error.message 
+    }), {
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
@@ -198,6 +392,25 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     })
+    
+    // HTTPステータスコードチェック
+    if (!res.ok) {
+      console.log(`[fetch] Direct fetch failed with status: ${res.status}`)
+      
+      // 404, 401, 403などのエラーの場合は即座にエラーを投げる
+      if (res.status === 404) {
+        throw new Error('PAGE_NOT_FOUND')
+      } else if (res.status === 401) {
+        throw new Error('UNAUTHORIZED')
+      } else if (res.status === 403) {
+        throw new Error('FORBIDDEN')
+      } else if (res.status >= 500) {
+        throw new Error('SERVER_ERROR')
+      }
+      // その他のエラーはJinaで試行
+      throw new Error(`HTTP_ERROR_${res.status}`)
+    }
+    
     html = await res.text()
 
     // HTMLから構造を保持したテキストを抽出
@@ -209,6 +422,11 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
       return { html, content }
     }
   } catch (e) {
+    const error = e as Error
+    // 特定のエラーの場合は再試行せずに即座に終了
+    if (['PAGE_NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN', 'SERVER_ERROR'].includes(error.message)) {
+      throw error
+    }
     console.log('[fetch] Direct fetch failed, trying Jina...')
   }
 
@@ -217,7 +435,19 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
     headers: { 'Accept': 'text/plain' }
   })
 
+  // Jinaのレスポンスもステータスチェック
   if (!jinaRes.ok) {
+    console.log(`[fetch] Jina fetch failed with status: ${jinaRes.status}`)
+    
+    if (jinaRes.status === 404) {
+      throw new Error('PAGE_NOT_FOUND')
+    } else if (jinaRes.status === 401) {
+      throw new Error('UNAUTHORIZED')
+    } else if (jinaRes.status === 403) {
+      throw new Error('FORBIDDEN')
+    } else if (jinaRes.status >= 500) {
+      throw new Error('SERVER_ERROR')
+    }
     throw new Error(`Failed to fetch content: ${jinaRes.status}`)
   }
 
@@ -226,8 +456,13 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
   return { html, content }
 }
 
-// SEO診断関数 - HTMLフィードバック付き
-function analyzeSEO(html: string, url: string, content: string) {
+// 削除: analyzeSEO関数は seo-analyzer.ts に移動済み
+// 削除: evaluateWithLLM関数は evaluator.ts に移動済み
+
+// ========== 以下、削除対象の古いコード（1022行から295行に削減） ==========
+// TODO: 次のコミットで完全削除
+/*
+async function analyzeSEO_OLD(html: string, url: string, content: string) {
   const result = {
     title: { score: 0, value: '', issues: [] as string[], suggestions: [] as string[], htmlFix: '' },
     meta: { score: 0, description: '', keywords: '', issues: [] as string[], suggestions: [] as string[], htmlFix: '' },
@@ -499,6 +734,30 @@ function analyzeSEO(html: string, url: string, content: string) {
   // 推奨<head>タグの生成
   result.headHtml = generateRecommendedHead(result, url, suggestedTitle, suggestedDescription)
 
+  // Advanced SEO分析を追加
+  const advancedSeo = await analyzeAdvancedSeo(html, url)
+  result.advancedSeo = advancedSeo
+
+  // SEOスコアをAdvanced SEOを含めて再計算（より厳格に）
+  const basicSeoScore = Math.round(
+    (result.title.score * 0.15 +
+     result.meta.score * 0.15 +
+     result.headings.score * 0.15 +
+     result.images.score * 0.10 +
+     result.performance.score * 0.05) / 0.6
+  )
+  
+  const advancedSeoScore = Math.round(
+    (advancedSeo.technicalSeo.score * 0.25 +
+     advancedSeo.performanceSeo.score * 0.20 +
+     advancedSeo.contentSeo.score * 0.30 +
+     advancedSeo.userExperience.score * 0.25)
+  )
+  
+  // 基本SEOとAdvanced SEOの重み付け平均（Advanced SEOを重視）
+  const seoOverallScore = Math.round(basicSeoScore * 0.3 + advancedSeoScore * 0.7)
+  result.seoOverallScore = seoOverallScore
+
   return result
 }
 
@@ -589,8 +848,15 @@ function generateRecommendedHead(seo: any, url: string, title: string, descripti
 </head>`
 }
 
-async function evaluateWithLLM(text: string, seoResult: any) {
-  const models = ['gpt-5-mini', 'gpt-4o-mini']
+interface LLMUsage {
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+async function evaluateWithLLM(text: string, seoResult: any): Promise<{ result: any; usage: LLMUsage }> {
+  const models = ['gpt-4o-mini', 'gpt-4o']
 
   const openai = new OpenAI({
     apiKey: Deno.env.get('OPENAI_API_KEY')!
@@ -609,60 +875,121 @@ async function evaluateWithLLM(text: string, seoResult: any) {
 `
 
   const prompt = `
-あなたはLLMO（AI検索最適化）とSEO両方の専門評価者です。
-以下のWebページを読み、AI検索エンジンと従来の検索エンジン両方の観点から評価してください。
+あなたはLLMO（AI検索最適化）とAdvanced SEO統合評価の専門家です。
+以下のWebページを読み、AI検索エンジンと従来検索エンジン両方の観点から包括的に評価してください。
 
 注意: ページ本文は見出し（# / ## / ###）、リスト（-）、テーブル（| col |）、引用（>）の構造をMarkdown形式で保持しています。構造スコアの評価にはこの構造情報を正確に反映してください。
 
-# ページ本文
+# ページ本文（${text.length}文字）
 ${text.slice(0, 12000)}
 
 ${seoSummary}
 
-# 評価項目
+# 統合評価項目
 
 ## 1. AI引用スコア（0-100）
 - LLMが回答素材として使いやすいかどうか
 - 情報の明確性、構造化度、再利用性を評価
 
-## 2. 質問対応力の評価（重要）
+## 2. コンテンツ品質評価（重要）
+以下の観点でコンテンツを総合的に評価：
+
+### 2-1. 文字数と情報密度
+- 現在の文字数: ${text.length}文字
+- **質的評価基準**: 文字数だけでなく、情報の深さ、実用性、独自性を重視
+- 薄いコンテンツ、適切なコンテンツ、包括的コンテンツのどれに該当するか
+- このテーマ・トピックに対して「最適な文字数範囲」を算出
+
+### 2-2. 情報の構造化度
+- 見出し階層、箇条書き、Q&A形式、図表の活用状況
+- LLMが情報を抽出しやすい構造になっているか
+
+### 2-3. 専門性と信頼性
+- E-E-A-T（Experience, Expertise, Authoritativeness, Trustworthiness）評価
+- 情報源、データ、実体験の記載状況
+
+## 3. 質問対応力の評価（重要）
 以下の3カテゴリで質問をリストアップしてください：
 
-### 2-1. 現在答えられる質問（answerable）
+### 3-1. 現在答えられる質問（answerable）
 - このページの現在の内容で十分に回答できる質問（5-10個）
 - AIが引用して回答を生成できるレベルの質問
 
-### 2-2. 部分的に答えられる質問（partial）
+### 3-2. 部分的に答えられる質問（partial）
 - 情報が不足しているが、一部は答えられる質問（3-5個）
 - 何が足りないかも含めて記載
 
-### 2-3. 改善後に答えられるようになる質問（afterImprovement）
+### 3-3. 改善後に答えられるようになる質問（afterImprovement）
 - 提案する改善を実施すれば答えられるようになる質問（5-10個）
 - 具体的で検索されやすい質問形式で記載
 
-## 3. 概念カバレッジ（0-100）
+## 4. 概念カバレッジ（0-100）
 - このテーマで一般的にカバーすべき概念をどれだけ網羅しているか
 - カバー済み概念と、不足している概念をリストアップ
 
-## 4. 構造スコア（0-100）
+## 5. 構造スコア（0-100）
 - 見出し階層、箇条書き、Q&A形式などLLMが読み取りやすい構造か
 - 問題点を具体的に指摘
 
-## 5. E-E-A-Tスコア（0-100）
+## 6. E-E-A-Tスコア（0-100）
 - 専門性、経験、権威性、信頼性
 - 著者情報、参考文献、更新日などの有無
 
-## 6. 具体的な改善案（最重要）
-**LLMO改善案**と**SEO改善案**を両方含めて、優先度の高い順に8-12個の改善案を提案：
+## 7. Advanced SEOスコアの直接算出（最重要）
+**固定IF文は使用せず、以下の基準に基づいてあなたがスコアを直接決定してください。**
+
+### 7-1. 技術的SEO（0-100点）
+以下の要素を総合的に判断して点数を決定：
+- **Canonical URL（15点配分）**: 存在・正確性・適切性
+- **構造化データJSON-LD（15点配分）**: 存在・妥当性・スキーマタイプの適切性  
+- **Open Graph（10点配分）**: 完全性・画像設定・説明の質
+- **Twitter Card（5点配分）**: 設定有無・カードタイプの適切性
+- **SSL/HTTPS（15点配分）**: 有効性・混合コンテンツの有無
+- **モバイルビューポート（15点配分）**: 設定有無・レスポンシブ対応
+- **その他（25点配分）**: 言語設定、文字コード、robots.txt、サイトマップ等
+
+### 7-2. パフォーマンスSEO（0-100点）
+以下の要素を総合的に判断して点数を決定：
+- **HTMLサイズ（30点配分）**: 
+  - 100KB未満: 満点
+  - 100-300KB: 20-25点
+  - 300-500KB: 10-20点
+  - 500KB超: 0-10点
+- **インラインCSS/JS（20点配分）**: 適量なら満点、過剰なら減点
+- **外部リンク（25点配分）**: 適切な数とnofollow設定
+- **内部リンク（25点配分）**: サイト内導線の質、ブロークンリンクの有無
+
+### 7-3. コンテンツSEO（0-100点）
+**コンテキストとトピックを考慮した動的評価：**
+- **文字数（40点配分）**: 
+  - ニュース記事: 300-800語が適切
+  - ブログ記事: 800-2000語が適切
+  - 詳細ガイド: 2000語以上が適切
+  - トピックの深さと読者層を考慮
+- **マルチメディア（20点配分）**: 
+  - 画像: コンテンツ量に応じた適切な数
+  - 動画: トピックによって必要性を判断
+- **構造化（20点配分）**: リスト、テーブル、見出し階層の適切性
+- **情報密度（20点配分）**: 無駄な文章がなく、価値ある情報の比率
+
+### 7-4. ユーザー体験（0-100点）
+以下の要素を総合的に判断して点数を決定：
+- **アクセシビリティ（40点配分）**: ARIA、スキップリンク、フォームラベル
+- **ナビゲーション（30点配分）**: パンくず、目次、検索機能の必要性判断
+- **読みやすさ（30点配分）**: フォントサイズ、行間、コントラスト等
+
+## 8. 具体的な改善案（最重要）
+**LLMO改善案**、**SEO改善案**、**Advanced SEO改善案**を統合して、優先度の高い順に10-15個の改善案を提案：
 
 各改善案には必ず以下を含めること：
 - **priority**: "high" / "medium" / "low"
-- **category**: "structure" / "content" / "eeat" / "question" / "concept" / "seo-title" / "seo-meta" / "seo-heading" / "seo-image" / "seo-link" / "seo-schema"
-- **type**: "llmo" / "seo" / "both"（どちらの改善か）
+- **category**: "structure" / "content" / "eeat" / "question" / "concept" / "technical-seo" / "content-seo" / "ux-seo"
+- **type**: "llmo" / "seo" / "advanced-seo" / "integrated"
 - **issue**: 問題点を1文で説明
 - **action**: 具体的な改善アクションを1-2文で説明
 - **example**: 追加すべき文章やコードの具体例
 - **enablesQuestions**: この改善で答えられるようになる質問（1-3個）
+- **expectedImpact**: "低い" / "中程度" / "高い" / "非常に高い"
 
 # 出力形式（JSON）
 
@@ -690,31 +1017,106 @@ ${seoSummary}
   },
   "structure": {
     "score": 数値(0-100),
-    "issues": ["問題点1", "問題点2"]
+    "issues": ["問題点1", "問題点2"],
+    "strengths": ["構造的な強み1", "強み2"]
   },
   "eeat": {
     "score": 数値(0-100),
     "strengths": ["強み1", "強み2"],
     "weaknesses": ["弱み1", "弱み2"]
   },
+  "contentQuality": {
+    "wordCountEvaluation": {
+      "currentLength": 数値,
+      "rating": "thin" / "adequate" / "comprehensive" / "excessive",
+      "optimalRange": {"min": 数値, "max": 数値},
+      "reasoning": "このトピックに最適な文字数範囲の理由",
+      "qualityScore": 数値(0-100)
+    },
+    "informationDensity": {
+      "score": 数値(0-100),
+      "assessment": "情報密度の評価コメント"
+    },
+    "uniqueValue": {
+      "score": 数値(0-100),
+      "uniqueAspects": ["独自性のある要素1", "要素2"]
+    }
+  },
+  "overallScores": {
+    "llmoOverall": 数値(0-100),
+    "llmoBreakdown": {
+      "aiCitation": 数値,
+      "questionFit": 数値,
+      "coverage": 数値,
+      "structure": 数値,
+      "eeat": 数値,
+      "calculation": "例: (20 + 15 + 18 + 22 + 15) / 5 = 18 → 総合18点",
+      "detailCalculation": {
+        "aiCitation": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "questionFit": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "coverage": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "structure": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "eeat": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "total": 数値
+      }
+    },
+    "seoOverall": 数値(0-100),
+    "seoBreakdown": {
+      "title": 数値,
+      "meta": 数値,
+      "headings": 数値,
+      "images": 数値,
+      "keywords": 数値,
+      "calculation": "例: (80 + 70 + 60 + 50 + 65) / 5 = 65 → 総合65点",
+      "detailCalculation": {
+        "title": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "meta": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "headings": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "images": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "keywords": {"score": 数値, "max": 100, "weight": 0.2, "weighted": 数値},
+        "total": 数値
+      }
+    },
+    "advancedSeoOverall": 数値(0-100),
+    "advancedSeoBreakdown": {
+      "technical": 数値,
+      "performance": 数値,
+      "content": 数値,
+      "userExperience": 数値,
+      "calculation": "例: (75 + 80 + 90 + 70) / 4 = 78.75 → 総合79点",
+      "detailCalculation": {
+        "technical": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "performance": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "content": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "userExperience": {"score": 数値, "max": 100, "weight": 0.25, "weighted": 数値},
+        "total": 数値
+      }
+    }
+  },
+  "advancedSeoScores": {
+    "technicalSeo": 数値(0-100),
+    "performanceSeo": 数値(0-100),
+    "contentSeo": 数値(0-100),
+    "userExperience": 数値(0-100),
+    "wordCountRating": "thin" / "adequate" / "optimal" / "comprehensive",
+    "contentReasoning": "コンテンツSEOスコアの詳細根拠（何点配分でどう判断したか）",
+    "reasoning": {
+      "technical": "技術的SEOスコアの根拠",
+      "performance": "パフォーマンスSEOスコアの根拠",
+      "content": "コンテンツSEOスコアの根拠（文字数、画像、構造など各要素の配点と判断）",
+      "ux": "ユーザー体験スコアの根拠"
+    }
+  },
   "improvements": [
     {
       "priority": "high",
-      "category": "structure",
-      "type": "llmo",
+      "category": "content-seo",
+      "type": "integrated",
       "issue": "問題点の説明",
       "action": "具体的な改善アクション",
       "example": "追加すべき文章や見出しの例",
-      "enablesQuestions": ["この改善で答えられるようになる質問"]
-    },
-    {
-      "priority": "high",
-      "category": "seo-meta",
-      "type": "seo",
-      "issue": "meta descriptionがない",
-      "action": "検索結果に表示される説明文を追加",
-      "example": "<meta name=\\"description\\" content=\\"...\\">",
-      "enablesQuestions": []
+      "enablesQuestions": ["この改善で答えられるようになる質問"],
+      "expectedImpact": "非常に高い"
     }
   ]
 }
@@ -727,12 +1129,21 @@ ${seoSummary}
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         console.log(`[analyze] OpenAI ${model} attempt ${attempt}/3`)
+        
+        // リクエストログ
+        console.log('[analyze] LLM Request:', {
+          model,
+          promptLength: prompt.length,
+          promptPreview: prompt.substring(0, 500) + '...',
+          maxTokens: 16000
+        })
+        
         const res = await openai.chat.completions.create({
           model,
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
-          // 4000で長さ切れが出たためさらに増やす
-          max_completion_tokens: 15000
+          // LLMをフル活用してより詳細な統合評価を実施（gpt-4o-mini上限: 16384）
+          max_completion_tokens: 16000
         })
 
         const choice = res.choices?.[0]
@@ -749,7 +1160,29 @@ ${seoSummary}
         }
 
         try {
-          return JSON.parse(content)
+          const parsedResult = JSON.parse(content)
+          
+          // レスポンスログ
+          console.log('[analyze] LLM Response:', {
+            model,
+            responseLength: content.length,
+            hasOverallScores: !!parsedResult.overallScores,
+            hasAdvancedSeoScores: !!parsedResult.advancedSeoScores,
+            scores: {
+              llmoOverall: parsedResult.overallScores?.llmoOverall,
+              seoOverall: parsedResult.overallScores?.seoOverall,
+              advancedSeoOverall: parsedResult.overallScores?.advancedSeoOverall
+            }
+          })
+          
+          const usage: LLMUsage = {
+            model,
+            promptTokens: res.usage?.prompt_tokens || 0,
+            completionTokens: res.usage?.completion_tokens || 0,
+            totalTokens: res.usage?.total_tokens || 0
+          }
+          console.log(`[analyze] Token usage: ${usage.totalTokens} (prompt: ${usage.promptTokens}, completion: ${usage.completionTokens})`)
+          return { result: parsedResult, usage }
         } catch (e: any) {
           throw new Error(`Failed to parse JSON: ${e.message}`)
         }
@@ -766,3 +1199,4 @@ ${seoSummary}
 
   throw new Error(`LLM failed after retries: ${lastError?.message}`)
 }
+*/

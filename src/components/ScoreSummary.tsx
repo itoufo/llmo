@@ -28,22 +28,29 @@ function ScoreItem({ label, score, tooltip }: ScoreItemProps) {
   }, [showTooltip])
 
   const getColorClass = (score: number) => {
-    if (score >= 80) return 'bg-green-100 text-green-800 border-green-200'
-    if (score >= 60) return 'bg-blue-100 text-blue-800 border-blue-200'
-    if (score >= 40) return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    return 'bg-red-100 text-red-800 border-red-200'
+    if (score >= 80) return 'score-excellent'
+    if (score >= 60) return 'score-good'
+    if (score >= 40) return 'score-fair'
+    return 'score-poor'
+  }
+
+  const getProgressColor = (score: number) => {
+    if (score >= 80) return 'from-emerald-400 to-green-500'
+    if (score >= 60) return 'from-blue-400 to-indigo-500'
+    if (score >= 40) return 'from-amber-400 to-yellow-500'
+    return 'from-red-400 to-rose-500'
   }
 
   return (
-    <div className={`px-4 py-3 rounded-lg border ${getColorClass(score)}`}>
-      <div className="text-sm font-medium mb-1 flex items-center">
+    <div className={`px-5 py-4 rounded-xl border-2 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 ${getColorClass(score)}`}>
+      <div className="text-sm font-semibold mb-2 flex items-center">
         {label}
         {tooltip && (
-          <span className="ml-1">
+          <span className="ml-1.5">
             <button
               ref={buttonRef}
               type="button"
-              className="w-4 h-4 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-600 text-xs font-bold inline-flex items-center justify-center cursor-help"
+              className="w-4 h-4 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-500 text-xs font-bold inline-flex items-center justify-center cursor-help transition-colors"
               onMouseEnter={() => setShowTooltip(true)}
               onMouseLeave={() => setShowTooltip(false)}
               onClick={() => setShowTooltip(!showTooltip)}
@@ -52,7 +59,7 @@ function ScoreItem({ label, score, tooltip }: ScoreItemProps) {
             </button>
             {showTooltip && createPortal(
               <div
-                className="fixed z-[9999] w-56 p-2 text-xs text-gray-700 bg-white border border-gray-200 rounded-lg shadow-xl"
+                className="fixed z-[9999] w-64 p-3 text-xs text-gray-700 bg-white border border-gray-100 rounded-xl shadow-xl"
                 style={{ top: position.top, left: Math.max(10, position.left) }}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
@@ -64,7 +71,13 @@ function ScoreItem({ label, score, tooltip }: ScoreItemProps) {
           </span>
         )}
       </div>
-      <div className="text-2xl font-bold">{score}</div>
+      <div className="text-3xl font-extrabold mb-2">{score}</div>
+      <div className="w-full h-1.5 bg-white/50 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r ${getProgressColor(score)} transition-all duration-500`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
     </div>
   )
 }

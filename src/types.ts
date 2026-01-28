@@ -40,6 +40,41 @@ export interface SEOResult {
   canonical: { url: string; hasCanonical: boolean }
   robots: { content: string; issues: string[] }
   structured: { hasSchema: boolean; types: string[] }
+  seoOverallScore?: number
+  advancedSeo?: {
+    technicalSeo: { score: number; items: any }
+    performanceSeo: { score: number; items: any }
+    contentSeo: { 
+      score: number; 
+      items: any;
+      scoreBreakdown?: {
+        baseScore: number;
+        deductions: Array<{ reason: string; penalty: number; current: number }>;
+        calculations: Array<{ reason: string; penalty: number }>;
+        llmAdjustments?: Array<{
+          reason: string;
+          adjustment: number;
+          originalScore: number;
+          finalScore: number;
+          targetWordCount: number;
+          actualWordCount: number;
+        }>;
+      }
+    }
+    userExperience: { score: number; items: any }
+  }
+}
+
+export interface UsageInfo {
+  model: string
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cost: {
+    input: number
+    output: number
+    total: number
+  }
 }
 
 export interface AnalyzeResult {
@@ -67,6 +102,12 @@ export interface AnalyzeResult {
   improvements: Improvement[]
   questions: QuestionsEvaluation
   seo?: SEOResult
+  result?: {
+    metadata?: {
+      title?: string
+    }
+    issues?: any[]
+  }
   details?: {
     aiCitationComment?: string
     missingConcepts?: string[]
@@ -75,4 +116,88 @@ export interface AnalyzeResult {
     eeatStrengths?: string[]
     eeatWeaknesses?: string[]
   }
+  usage?: UsageInfo
+}
+
+// 診断結果のキャッシュエントリ
+export interface CachedResult {
+  date: string // YYYY-MM-DD
+  analyzedAt: string // ISO timestamp
+  result: AnalyzeResult
+}
+
+// ページごとの履歴
+export interface PageHistory {
+  url: string
+  latestScore: number
+  results: CachedResult[]
+}
+
+// ドメインごとの履歴
+export interface DomainHistory {
+  domain: string
+  pages: Record<string, PageHistory> // key: URL
+}
+
+// 全体の履歴ストレージ
+export interface HistoryStorage {
+  domains: Record<string, DomainHistory> // key: domain
+}
+
+// 分析結果（DB用）
+export interface Analysis {
+  id: string
+  url: string
+  score: number
+  result: AnalyzeResult
+  user_id: string | null
+  tenant_id: string | null
+  created_at: string
+}
+
+// テナント情報
+export interface Tenant {
+  id: string
+  name: string
+  slug: string
+  plan: string
+  monthly_limit: number
+  settings: Record<string, any>
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// プロファイル情報
+export interface Profile {
+  id: string
+  display_name: string | null
+  avatar_url: string | null
+  default_tenant_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+// サイトマップ関連
+export interface SitemapUrl {
+  loc: string
+  lastmod?: string
+  changefreq?: string
+  priority?: string
+}
+
+export interface SitemapResult {
+  domain: string
+  sitemapUrl: string
+  urls: SitemapUrl[]
+  totalFound: number
+  truncated: boolean
+}
+
+export interface SitemapUrlWithStatus extends SitemapUrl {
+  selected: boolean
+  status: 'pending' | 'analyzing' | 'completed' | 'error'
+  score?: number
+  analyzedAt?: string
+  error?: string
 }
