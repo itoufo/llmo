@@ -131,6 +131,62 @@ serve(async (req) => {
   }
 })
 
+/**
+ * HTMLから構造を保持したテキスト（Markdown風）に変換する
+ * 見出し→#、リスト→-/1.、テーブル→|col|、引用→> を保持
+ */
+function htmlToStructuredText(html: string): string {
+  // script, style, nav, footer等のノイズを除去
+  let cleaned = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+    .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+    .replace(/<aside[^>]*>[\s\S]*?<\/aside>/gi, '')
+
+  // 見出しをMarkdown形式に変換
+  cleaned = cleaned.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, level, text) => {
+    const cleanText = text.replace(/<[^>]+>/g, '').trim()
+    return cleanText ? `\n${'#'.repeat(parseInt(level))} ${cleanText}\n` : ''
+  })
+
+  // リスト項目を変換
+  cleaned = cleaned.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, text) => {
+    const cleanText = text.replace(/<[^>]+>/g, '').trim()
+    return cleanText ? `- ${cleanText}\n` : ''
+  })
+
+  // テーブルセルを変換
+  cleaned = cleaned.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (_, row) => {
+    const cells: string[] = []
+    row.replace(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi, (_: string, cell: string) => {
+      cells.push(cell.replace(/<[^>]+>/g, '').trim())
+      return ''
+    })
+    return cells.length > 0 ? `| ${cells.join(' | ')} |\n` : ''
+  })
+
+  // blockquoteを変換
+  cleaned = cleaned.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_, text) => {
+    const cleanText = text.replace(/<[^>]+>/g, '').trim()
+    return cleanText ? `> ${cleanText}\n` : ''
+  })
+
+  // 段落にはブレイクを入れる
+  cleaned = cleaned.replace(/<\/p>/gi, '\n\n')
+  cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n')
+
+  // 残りのタグを除去
+  cleaned = cleaned.replace(/<[^>]+>/g, ' ')
+
+  // 連続空白・空行を整理
+  cleaned = cleaned.replace(/[ \t]+/g, ' ')
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n')
+  cleaned = cleaned.trim()
+
+  return cleaned
+}
+
 async function fetchContent(url: string): Promise<{ html: string; content: string }> {
   let html = ''
   let content = ''
@@ -144,16 +200,12 @@ async function fetchContent(url: string): Promise<{ html: string; content: strin
     })
     html = await res.text()
 
-    // HTMLからテキスト抽出
-    content = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
+    // HTMLから構造を保持したテキストを抽出
+    content = htmlToStructuredText(html)
 
-    if (content.length > 200) {
-      console.log(`[fetch] Direct fetch successful: ${content.length} chars`)
+    const plainLength = content.replace(/[#\-|>]/g, '').replace(/\s+/g, ' ').trim().length
+    if (plainLength > 200) {
+      console.log(`[fetch] Direct fetch successful: ${content.length} chars (plain: ${plainLength})`)
       return { html, content }
     }
   } catch (e) {
@@ -560,8 +612,10 @@ async function evaluateWithLLM(text: string, seoResult: any) {
 あなたはLLMO（AI検索最適化）とSEO両方の専門評価者です。
 以下のWebページを読み、AI検索エンジンと従来の検索エンジン両方の観点から評価してください。
 
+注意: ページ本文は見出し（# / ## / ###）、リスト（-）、テーブル（| col |）、引用（>）の構造をMarkdown形式で保持しています。構造スコアの評価にはこの構造情報を正確に反映してください。
+
 # ページ本文
-${text.slice(0, 7000)}
+${text.slice(0, 12000)}
 
 ${seoSummary}
 

@@ -49,14 +49,14 @@ export function SeoSummary({ seo, seoOverall }: Props) {
   }
 
   const items = [
-    { label: 'タイトル', score: extSeo.title.score, issues: extSeo.title.issues, suggestions: extSeo.title.suggestions, htmlFix: extSeo.title.htmlFix },
-    { label: 'Meta Description', score: extSeo.meta.score, issues: extSeo.meta.issues, suggestions: extSeo.meta.suggestions, htmlFix: extSeo.meta.htmlFix },
-    { label: '見出し構造', score: extSeo.headings.score, issues: extSeo.headings.issues, suggestions: extSeo.headings.suggestions, htmlFix: extSeo.headings.htmlFix },
-    { label: '画像', score: extSeo.images.score, issues: extSeo.images.issues, suggestions: extSeo.images.suggestions, htmlFix: extSeo.images.htmlFix },
-    { label: 'リンク', score: extSeo.links.score, issues: extSeo.links.issues, suggestions: extSeo.links.suggestions, htmlFix: extSeo.links.htmlFix },
-    { label: 'モバイル', score: extSeo.mobile.score, issues: extSeo.mobile.issues, suggestions: extSeo.mobile.suggestions, htmlFix: extSeo.mobile.htmlFix },
-    { label: 'パフォーマンス', score: extSeo.performance.score, issues: extSeo.performance.issues, suggestions: extSeo.performance.suggestions },
-  ]
+    extSeo.title && { label: 'タイトル', score: extSeo.title.score, issues: extSeo.title.issues, suggestions: extSeo.title.suggestions, htmlFix: extSeo.title.htmlFix },
+    extSeo.meta && { label: 'Meta Description', score: extSeo.meta.score, issues: extSeo.meta.issues, suggestions: extSeo.meta.suggestions, htmlFix: extSeo.meta.htmlFix },
+    extSeo.headings && { label: '見出し構造', score: extSeo.headings.score, issues: extSeo.headings.issues, suggestions: extSeo.headings.suggestions, htmlFix: extSeo.headings.htmlFix },
+    extSeo.images && { label: '画像', score: extSeo.images.score, issues: extSeo.images.issues, suggestions: extSeo.images.suggestions, htmlFix: extSeo.images.htmlFix },
+    extSeo.links && { label: 'リンク', score: extSeo.links.score, issues: extSeo.links.issues, suggestions: extSeo.links.suggestions, htmlFix: extSeo.links.htmlFix },
+    extSeo.mobile && { label: 'モバイル', score: extSeo.mobile.score, issues: extSeo.mobile.issues, suggestions: extSeo.mobile.suggestions, htmlFix: extSeo.mobile.htmlFix },
+    extSeo.performance && { label: 'パフォーマンス', score: extSeo.performance.score, issues: extSeo.performance.issues, suggestions: extSeo.performance.suggestions },
+  ].filter(Boolean) as { label: string; score: number; issues: string[]; suggestions: string[]; htmlFix?: string }[]
 
   return (
     <div className="space-y-6">
@@ -72,7 +72,10 @@ export function SeoSummary({ seo, seoOverall }: Props) {
       </div>
 
       {/* サマリー */}
+      {(extSeo.headings || extSeo.images || extSeo.links) && (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {extSeo.headings && (
+        <>
         <div className="text-center p-3 bg-gray-50 rounded-lg">
           <div className="text-sm text-gray-500">H1</div>
           <div className="text-lg font-bold">{extSeo.headings.h1Count}</div>
@@ -81,15 +84,22 @@ export function SeoSummary({ seo, seoOverall }: Props) {
           <div className="text-sm text-gray-500">H2</div>
           <div className="text-lg font-bold">{extSeo.headings.h2Count}</div>
         </div>
+        </>
+        )}
+        {extSeo.images && (
         <div className="text-center p-3 bg-gray-50 rounded-lg">
           <div className="text-sm text-gray-500">画像</div>
           <div className="text-lg font-bold">{extSeo.images.withAlt}/{extSeo.images.total}</div>
         </div>
+        )}
+        {extSeo.links && (
         <div className="text-center p-3 bg-gray-50 rounded-lg">
           <div className="text-sm text-gray-500">内部リンク</div>
           <div className="text-lg font-bold">{extSeo.links.internal}</div>
         </div>
+        )}
       </div>
+      )}
 
       {/* 推奨<head>タグ */}
       {extSeo.headHtml && (
@@ -275,9 +285,11 @@ export function SeoSummary({ seo, seoOverall }: Props) {
       )}
 
       {/* その他の確認項目 */}
+      {(extSeo.canonical || extSeo.structured || extSeo.robots) && (
       <div className="p-4 bg-gray-50 rounded-lg">
         <h3 className="font-medium mb-3">その他の確認項目</h3>
         <div className="space-y-2 text-sm">
+          {extSeo.canonical && (
           <div className="flex items-center">
             <span className={extSeo.canonical.hasCanonical ? 'text-green-600' : 'text-yellow-600'}>
               {extSeo.canonical.hasCanonical ? '✅' : '⚠️'}
@@ -294,6 +306,8 @@ export function SeoSummary({ seo, seoOverall }: Props) {
               </button>
             )}
           </div>
+          )}
+          {extSeo.structured && (
           <div className="flex items-center">
             <span className={extSeo.structured.hasSchema ? 'text-green-600' : 'text-yellow-600'}>
               {extSeo.structured.hasSchema ? '✅' : '⚠️'}
@@ -302,7 +316,8 @@ export function SeoSummary({ seo, seoOverall }: Props) {
               構造化データ: {extSeo.structured.hasSchema ? extSeo.structured.types.join(', ') : '未設定'}
             </span>
           </div>
-          {extSeo.robots.issues && extSeo.robots.issues.length > 0 && (
+          )}
+          {extSeo.robots?.issues && extSeo.robots.issues.length > 0 && (
             <div className="flex items-center text-red-600">
               <span>🚫</span>
               <span className="ml-2">{extSeo.robots.issues.join(', ')}</span>
@@ -310,9 +325,10 @@ export function SeoSummary({ seo, seoOverall }: Props) {
           )}
         </div>
       </div>
+      )}
 
       {/* 見出し構造のプレビュー */}
-      {extSeo.headings.structure && extSeo.headings.structure.length > 0 && (
+      {extSeo.headings && Array.isArray(extSeo.headings.structure) && extSeo.headings.structure.length > 0 && (
         <div className="p-4 bg-blue-50 rounded-lg">
           <h3 className="font-medium mb-3 text-blue-800">現在の見出し構造</h3>
           <ul className="text-sm space-y-1 font-mono">
