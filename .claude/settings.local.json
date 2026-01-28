@@ -4,7 +4,9 @@
       "mcp__ruv-swarm",
       "mcp__claude-flow@alpha",
       "mcp__flow-nexus",
-      "mcp__claude-flow__memory_usage"
+      "mcp__claude-flow__memory_usage",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   },
