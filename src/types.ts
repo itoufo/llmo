@@ -201,3 +201,194 @@ export interface SitemapUrlWithStatus extends SitemapUrl {
   analyzedAt?: string
   error?: string
 }
+
+// ===========================================
+// Consulting Grade Types
+// ===========================================
+
+// Extended Improvement with ROI data
+export interface EnhancedImprovement extends Improvement {
+  effort?: 'minimal' | 'low' | 'medium' | 'high' | 'major'
+  impactPrediction?: {
+    metricAffected: string
+    currentEstimate: number
+    predictedScore: number
+    confidenceLevel: 'high' | 'medium' | 'low'
+  }
+  evidence?: {
+    contentQuotes: string[]
+    scoreJustification: string
+  }
+  isQuickWin?: boolean
+  implementationOrder?: number
+}
+
+// Executive Summary
+export interface KeyFinding {
+  icon: 'critical' | 'warning' | 'info' | 'success'
+  finding: string
+}
+
+export interface ExecutiveSummaryData {
+  headline: string
+  keyFindings: KeyFinding[]
+  overallVerdict: 'excellent' | 'good' | 'needs-improvement' | 'critical'
+  scores: {
+    overall: number
+    llmoOverall: number
+    seoOverall: number
+  }
+  benchmarkPercentile?: number
+  improvementPotential?: number
+  quickWinCount?: number
+  totalEstimatedHours?: { min: number; max: number }
+}
+
+// Quick Wins
+export interface QuickWinItem {
+  id: string
+  title: string
+  description: string
+  effort: string
+  impact: string
+  category: string
+  steps?: string[]
+  example?: string
+  metricAffected?: string
+}
+
+// Benchmark Comparison
+export interface BenchmarkData {
+  metric: string
+  label: string
+  score: number
+  percentile: number
+  interpretation: string
+  industryAvg: number
+  gap: number
+  improvementPotential: number
+}
+
+// Implementation Roadmap
+export interface RoadmapItem {
+  id: string
+  title: string
+  description?: string
+  effort: string
+  impact: string
+  dependencies?: string[]
+  isCompleted?: boolean
+}
+
+export interface RoadmapPhase {
+  id: string
+  phase: string
+  timeframe: string
+  description?: string
+  items: RoadmapItem[]
+  expectedGain: string
+  isActive?: boolean
+}
+
+// Consulting Insights (from LLM response)
+export interface ConsultingInsights {
+  executiveSummary?: {
+    headline: string
+    keyFindings: KeyFinding[]
+    overallVerdict: 'excellent' | 'good' | 'needs-improvement' | 'critical'
+  }
+  quickWins?: {
+    items: Array<{
+      title: string
+      effort: string
+      impact: string
+      description: string
+    }>
+    totalTimeEstimate: string
+    expectedTotalGain: string
+  }
+  roadmap?: {
+    phases: Array<{
+      phase: string
+      timeframe: string
+      items: string[]
+      expectedGain: string
+    }>
+  }
+  competitiveContext?: {
+    industryBenchmark: string
+    positioningAdvice: string
+  }
+}
+
+// Extended AnalyzeResult with consulting data
+export interface EnhancedAnalyzeResult extends AnalyzeResult {
+  consultingInsights?: ConsultingInsights
+  enhancedImprovements?: EnhancedImprovement[]
+}
+
+// ===========================================
+// Sitemap Enhanced Types
+// ===========================================
+
+// Page priority calculation
+export interface PagePriorityScore {
+  url: string
+  score: number
+  tier: 'critical' | 'high' | 'medium' | 'low'
+  factors: {
+    depth: number
+    sitemapPriority: number
+    recency: number
+    pathSignal: number
+    changefreq: number
+  }
+}
+
+// URL tree node for visualization
+export interface UrlTreeNode {
+  segment: string
+  fullPath: string
+  url?: SitemapUrlWithStatus
+  children: UrlTreeNode[]
+  count: number
+  avgScore?: number
+  priorityTier?: 'critical' | 'high' | 'medium' | 'low'
+}
+
+// Sitemap history snapshot
+export interface SitemapSnapshot {
+  id: string
+  domain: string
+  createdAt: string
+  averageScore: number
+  urlCount: number
+  urlScores: Record<string, number>
+}
+
+// Trend data point
+export interface TrendDataPoint {
+  date: string
+  averageScore: number
+  urlCount: number
+  llmoAvg?: number
+  seoAvg?: number
+}
+
+// Comparison row for matrix
+export interface ComparisonRow {
+  url: string
+  pathname: string
+  overall: number
+  llmoOverall?: number
+  seoOverall?: number
+  aiCitation: number
+  questionFit: number
+  coverage: number
+  structure: number
+  eeat: number
+  analyzedAt?: string
+}
+
+// View modes for sitemap
+export type SitemapViewMode = 'list' | 'tree' | 'compare' | 'trends'

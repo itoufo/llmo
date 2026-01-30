@@ -18,6 +18,10 @@
   external_node_modules = ["cheerio"]
   timeout = 900
 
+[[edge_functions]]
+  function = "basic-auth"
+  path = "/*"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

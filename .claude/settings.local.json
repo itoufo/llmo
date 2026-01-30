@@ -13,6 +13,8 @@
     "ruv-swarm",
     "supabase",
     "claude-flow@alpha",
-    "flow-nexus"
-  ]
+    "flow-nexus",
+    "codex"
+  ],
+  "enableAllProjectMcpServers": true
 }
