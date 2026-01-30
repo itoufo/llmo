@@ -21,8 +21,6 @@ import {
   calculateOverallPercentile,
   getOverallInterpretation,
 } from '../utils/consultingDataTransformer'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 
 type TabType = 'single' | 'sitemap'
 type ResultViewType = 'overview' | 'summary' | 'quickwins' | 'benchmark' | 'roadmap'
@@ -47,7 +45,6 @@ export function HomePage() {
   const [activeTab, setActiveTab] = useState<TabType>('single')
   const [result, setResult] = useState<AnalyzeResult | null>(null)
   const [fromCache, setFromCache] = useState(false)
-  const [exporting, setExporting] = useState(false)
   const [historyStorage, setHistoryStorage] = useState<HistoryStorage>({ domains: {} })
   const [showHistory, setShowHistory] = useState(false)
   const [resultView, setResultView] = useState<ResultViewType>('overview')
@@ -179,81 +176,12 @@ export function HomePage() {
     return bLatest - aLatest
   })
 
-  const exportAsPDF = async () => {
+  const exportAsPDF = () => {
     if (!result || !resultsRef.current) return
-    setExporting(true)
-    try {
-      // Add pdf-exporting class to fix html2canvas rendering issues:
-      // - gradient text (background-clip:text) becomes solid color
-      // - backdrop-filter/blur becomes opaque white
-      // - semi-transparent backgrounds become fully opaque
-      document.documentElement.classList.add('pdf-exporting')
-
-      // Wait for styles to apply
-      await new Promise(r => setTimeout(r, 100))
-
-      const canvas = await html2canvas(resultsRef.current, {
-        scale: 3,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        imageTimeout: 15000,
-        removeContainer: true,
-      })
-
-      // Remove override class immediately after capture
-      document.documentElement.classList.remove('pdf-exporting')
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      })
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = pdf.internal.pageSize.getHeight()
-      const margin = 10
-      const contentWidth = pdfWidth - margin * 2
-      const usableHeight = pdfHeight - margin * 2
-
-      // Scale image to fit PDF width
-      const imgWidth = canvas.width
-      const imgHeight = canvas.height
-      const ratio = contentWidth / imgWidth
-
-      // Split canvas into per-page slices to avoid duplicating the full image
-      const pageCanvasHeight = usableHeight / ratio // source pixels per page
-      const totalPages = Math.ceil(imgHeight / pageCanvasHeight)
-
-      for (let page = 0; page < totalPages; page++) {
-        if (page > 0) pdf.addPage()
-
-        const srcY = page * pageCanvasHeight
-        const srcH = Math.min(pageCanvasHeight, imgHeight - srcY)
-        const destH = srcH * ratio
-
-        // Create a slice canvas for this page
-        const sliceCanvas = document.createElement('canvas')
-        sliceCanvas.width = imgWidth
-        sliceCanvas.height = srcH
-        const ctx = sliceCanvas.getContext('2d')
-        if (ctx) {
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
-          ctx.drawImage(canvas, 0, srcY, imgWidth, srcH, 0, 0, imgWidth, srcH)
-        }
-        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92)
-        pdf.addImage(sliceData, 'JPEG', margin, margin, contentWidth, destH, undefined, 'FAST')
-      }
-
-      pdf.save(`llmo-doctor-report-${new Date().toISOString().slice(0, 10)}.pdf`)
-    } catch (error) {
-      console.error('PDF export failed:', error)
-      alert('PDFエクスポートに失敗しました')
-    } finally {
-      document.documentElement.classList.remove('pdf-exporting')
-      setExporting(false)
-    }
+    // Use browser native print for vector-quality PDF output
+    // Text remains as text (not rasterized), so it's crisp at any zoom level
+    document.title = `llmo-doctor-report-${new Date().toISOString().slice(0, 10)}`
+    window.print()
   }
 
   const exportAsJSON = () => {
@@ -452,9 +380,9 @@ export function HomePage() {
 
       {/* Results */}
       {result && (
-        <div ref={resultsRef} className="space-y-8 animate-in">
+        <div ref={resultsRef} data-print-area className="space-y-8 animate-in">
           {/* Result View Tabs */}
-          <div className="flex justify-center">
+          <div data-no-print className="flex justify-center">
             <div className="inline-flex bg-white rounded-xl shadow-sm border border-gray-200 p-1 gap-1">
               {[
                 { id: 'overview' as const, label: '診断結果', icon: '📊' },
@@ -647,30 +575,17 @@ export function HomePage() {
           )}
 
           {/* Footer Actions - shown for all result views */}
-          <div className="flex flex-col items-center gap-5">
+          <div data-no-print className="flex flex-col items-center gap-5">
             {/* Export buttons */}
             <div className="flex flex-wrap justify-center gap-3">
               <button
                 onClick={exportAsPDF}
-                disabled={exporting}
-                className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-700 font-medium rounded-xl transition-all duration-300 text-sm border border-rose-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-700 font-medium rounded-xl transition-all duration-300 text-sm border border-rose-200 shadow-sm hover:shadow-md hover:-translate-y-0.5"
               >
-                {exporting ? (
-                  <>
-                    <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    PDF作成中...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    PDF
-                  </>
-                )}
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                PDF
               </button>
               <button
                 onClick={exportAsJSON}

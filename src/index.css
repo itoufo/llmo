@@ -216,54 +216,85 @@ html {
   }
 }
 
-/* PDF export overrides — applied via .pdf-exporting class during html2canvas capture */
-.pdf-exporting .text-gradient {
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: #6366f1 !important;
-  color: #6366f1 !important;
-}
+/* Print styles for PDF export via window.print() */
+@media print {
+  /* Hide everything except the report */
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 
-.pdf-exporting .text-gradient-blue {
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: #4f46e5 !important;
-  color: #4f46e5 !important;
-}
+  /* Hide non-report UI: header, form, footer, tabs, export buttons */
+  body > #root > * > *:not([data-print-area]) {
+    display: none !important;
+  }
 
-.pdf-exporting .glass,
-.pdf-exporting .glass-strong {
-  background: rgba(255, 255, 255, 1) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
+  /* The print area itself should show */
+  [data-print-area] {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 
-.pdf-exporting .card {
-  background: rgba(255, 255, 255, 1) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-color: #e5e7eb !important;
-}
+  /* Hide interactive elements inside the report */
+  [data-no-print] {
+    display: none !important;
+  }
 
-.pdf-exporting [class*="bg-white\\/"] {
-  background-color: #ffffff !important;
-}
+  /* Fix gradient text — print renders background-clip:text properly,
+     but ensure solid fallback colors just in case */
+  .text-gradient {
+    -webkit-text-fill-color: #6366f1 !important;
+    color: #6366f1 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 
-.pdf-exporting [class*="backdrop-blur"] {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
+  .text-gradient-blue {
+    -webkit-text-fill-color: #4f46e5 !important;
+    color: #4f46e5 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 
-.pdf-exporting [class*="border-gray-100\\/"] {
-  border-color: #e5e7eb !important;
-}
+  /* Force background colors to print */
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
 
-.pdf-exporting .bg-clip-text,
-.pdf-exporting [class*="bg-clip-text"] {
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: currentColor !important;
+  /* Remove glass/blur effects — not supported in print */
+  .glass, .glass-strong, .card {
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Semi-transparent backgrounds → opaque */
+  [class*="bg-white\\/"] {
+    background-color: #ffffff !important;
+  }
+
+  /* Remove shadows for cleaner print */
+  .card-elevated, .card {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Disable animations */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Page break control */
+  .card-elevated, .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
 }
