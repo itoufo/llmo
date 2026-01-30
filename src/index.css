@@ -215,3 +215,55 @@ html {
     animation: shimmer 1.5s infinite;
   }
 }
+
+/* PDF export overrides — applied via .pdf-exporting class during html2canvas capture */
+.pdf-exporting .text-gradient {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #6366f1 !important;
+  color: #6366f1 !important;
+}
+
+.pdf-exporting .text-gradient-blue {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: #4f46e5 !important;
+  color: #4f46e5 !important;
+}
+
+.pdf-exporting .glass,
+.pdf-exporting .glass-strong {
+  background: rgba(255, 255, 255, 1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.pdf-exporting .card {
+  background: rgba(255, 255, 255, 1) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: #e5e7eb !important;
+}
+
+.pdf-exporting [class*="bg-white\\/"] {
+  background-color: #ffffff !important;
+}
+
+.pdf-exporting [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.pdf-exporting [class*="border-gray-100\\/"] {
+  border-color: #e5e7eb !important;
+}
+
+.pdf-exporting .bg-clip-text,
+.pdf-exporting [class*="bg-clip-text"] {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+}

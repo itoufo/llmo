@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { UrlForm } from './UrlForm'
 import { SitemapAnalyzer } from './SitemapAnalyzer'
 import { ScoreRadar } from './ScoreRadar'
@@ -7,12 +7,25 @@ import { QuestionsList } from './QuestionsList'
 import { ImprovementsList } from './ImprovementsList'
 import { SeoSummary } from './SeoSummary'
 import { Tooltip } from './Tooltip'
+import { ExecutiveSummary } from './consulting/ExecutiveSummary'
+import { QuickWins } from './consulting/QuickWins'
+import { BenchmarkComparison } from './consulting/BenchmarkComparison'
+import { ImplementationRoadmap } from './consulting/ImplementationRoadmap'
 import { useAuth } from '../contexts/AuthContext'
 import type { AnalyzeResult, HistoryStorage } from '../types'
+import {
+  toExecutiveSummary,
+  toQuickWins,
+  toBenchmarkData,
+  toRoadmap,
+  calculateOverallPercentile,
+  getOverallInterpretation,
+} from '../utils/consultingDataTransformer'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 type TabType = 'single' | 'sitemap'
+type ResultViewType = 'overview' | 'summary' | 'quickwins' | 'benchmark' | 'roadmap'
 
 const HISTORY_KEY = 'llmo-doctor-history-v2'
 const MAX_RESULTS_PER_PAGE = 5
@@ -37,7 +50,23 @@ export function HomePage() {
   const [exporting, setExporting] = useState(false)
   const [historyStorage, setHistoryStorage] = useState<HistoryStorage>({ domains: {} })
   const [showHistory, setShowHistory] = useState(false)
+  const [resultView, setResultView] = useState<ResultViewType>('overview')
+  const [completedQuickWins, setCompletedQuickWins] = useState<Set<string>>(new Set())
+  const [completedRoadmapItems, setCompletedRoadmapItems] = useState<Set<string>>(new Set())
   const resultsRef = useRef<HTMLDivElement>(null)
+
+  // Memoized consulting data transformations
+  const consultingData = useMemo(() => {
+    if (!result) return null
+    return {
+      executiveSummary: toExecutiveSummary(result),
+      quickWins: toQuickWins(result),
+      benchmarkData: toBenchmarkData(result),
+      roadmap: toRoadmap(result),
+      overallPercentile: calculateOverallPercentile(result),
+      overallInterpretation: getOverallInterpretation(result),
+    }
+  }, [result])
 
   // Load history from localStorage
   useEffect(() => {
@@ -154,42 +183,67 @@ export function HomePage() {
     if (!result || !resultsRef.current) return
     setExporting(true)
     try {
+      // Add pdf-exporting class to fix html2canvas rendering issues:
+      // - gradient text (background-clip:text) becomes solid color
+      // - backdrop-filter/blur becomes opaque white
+      // - semi-transparent backgrounds become fully opaque
+      document.documentElement.classList.add('pdf-exporting')
+
+      // Wait for styles to apply
+      await new Promise(r => setTimeout(r, 100))
+
       const canvas = await html2canvas(resultsRef.current, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        imageTimeout: 15000,
+        removeContainer: true,
       })
-      const imgData = canvas.toDataURL('image/png')
+
+      // Remove override class immediately after capture
+      document.documentElement.classList.remove('pdf-exporting')
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true,
       })
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
       const margin = 10
       const contentWidth = pdfWidth - margin * 2
+      const usableHeight = pdfHeight - margin * 2
 
-      // Scale image to fit PDF width (not height)
+      // Scale image to fit PDF width
       const imgWidth = canvas.width
       const imgHeight = canvas.height
       const ratio = contentWidth / imgWidth
-      const scaledHeight = imgHeight * ratio
 
-      let heightLeft = scaledHeight
-      let position = margin
+      // Split canvas into per-page slices to avoid duplicating the full image
+      const pageCanvasHeight = usableHeight / ratio // source pixels per page
+      const totalPages = Math.ceil(imgHeight / pageCanvasHeight)
 
-      // First page
-      pdf.addImage(imgData, 'PNG', margin, position, contentWidth, scaledHeight)
-      heightLeft -= (pdfHeight - margin * 2)
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) pdf.addPage()
 
-      // Additional pages if content exceeds one page
-      while (heightLeft > 0) {
-        pdf.addPage()
-        position = margin - (scaledHeight - heightLeft)
-        pdf.addImage(imgData, 'PNG', margin, position, contentWidth, scaledHeight)
-        heightLeft -= (pdfHeight - margin * 2)
+        const srcY = page * pageCanvasHeight
+        const srcH = Math.min(pageCanvasHeight, imgHeight - srcY)
+        const destH = srcH * ratio
+
+        // Create a slice canvas for this page
+        const sliceCanvas = document.createElement('canvas')
+        sliceCanvas.width = imgWidth
+        sliceCanvas.height = srcH
+        const ctx = sliceCanvas.getContext('2d')
+        if (ctx) {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height)
+          ctx.drawImage(canvas, 0, srcY, imgWidth, srcH, 0, 0, imgWidth, srcH)
+        }
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92)
+        pdf.addImage(sliceData, 'JPEG', margin, margin, contentWidth, destH, undefined, 'FAST')
       }
 
       pdf.save(`llmo-doctor-report-${new Date().toISOString().slice(0, 10)}.pdf`)
@@ -197,6 +251,7 @@ export function HomePage() {
       console.error('PDF export failed:', error)
       alert('PDFエクスポートに失敗しました')
     } finally {
+      document.documentElement.classList.remove('pdf-exporting')
       setExporting(false)
     }
   }
@@ -398,6 +453,92 @@ export function HomePage() {
       {/* Results */}
       {result && (
         <div ref={resultsRef} className="space-y-8 animate-in">
+          {/* Result View Tabs */}
+          <div className="flex justify-center">
+            <div className="inline-flex bg-white rounded-xl shadow-sm border border-gray-200 p-1 gap-1">
+              {[
+                { id: 'overview' as const, label: '診断結果', icon: '📊' },
+                { id: 'summary' as const, label: 'サマリー', icon: '📋' },
+                { id: 'quickwins' as const, label: 'Quick Wins', icon: '⚡' },
+                { id: 'benchmark' as const, label: 'ベンチマーク', icon: '📈' },
+                { id: 'roadmap' as const, label: 'ロードマップ', icon: '🗺️' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setResultView(tab.id)}
+                  className={`
+                    px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+                    ${resultView === tab.id
+                      ? 'bg-indigo-100 text-indigo-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <span className="mr-1.5">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Executive Summary View */}
+          {resultView === 'summary' && consultingData && (
+            <ExecutiveSummary {...consultingData.executiveSummary} />
+          )}
+
+          {/* Quick Wins View */}
+          {resultView === 'quickwins' && consultingData && (
+            <QuickWins
+              items={consultingData.quickWins.items}
+              totalTimeEstimate={consultingData.quickWins.totalTimeEstimate}
+              expectedTotalGain={consultingData.quickWins.expectedTotalGain}
+              onComplete={(itemId) => {
+                setCompletedQuickWins(prev => {
+                  const next = new Set(prev)
+                  if (next.has(itemId)) {
+                    next.delete(itemId)
+                  } else {
+                    next.add(itemId)
+                  }
+                  return next
+                })
+              }}
+              completedItems={completedQuickWins}
+            />
+          )}
+
+          {/* Benchmark Comparison View */}
+          {resultView === 'benchmark' && consultingData && (
+            <BenchmarkComparison
+              data={consultingData.benchmarkData}
+              overallPercentile={consultingData.overallPercentile}
+              overallInterpretation={consultingData.overallInterpretation}
+            />
+          )}
+
+          {/* Roadmap View */}
+          {resultView === 'roadmap' && consultingData && (
+            <ImplementationRoadmap
+              phases={consultingData.roadmap}
+              onItemComplete={(phaseId, itemId) => {
+                setCompletedRoadmapItems(prev => {
+                  const next = new Set(prev)
+                  const key = `${phaseId}:${itemId}`
+                  if (next.has(key)) {
+                    next.delete(key)
+                  } else {
+                    next.add(key)
+                  }
+                  return next
+                })
+              }}
+              completedItems={completedRoadmapItems}
+            />
+          )}
+
+          {/* Overview (Original Detail View) */}
+          {resultView === 'overview' && (
+            <>
           {/* Overall Score */}
           <div className="card-elevated p-8 sm:p-10">
             <div className="text-center mb-10">
@@ -502,8 +643,10 @@ export function HomePage() {
           <div className="card-elevated p-8 card-hover">
             <ImprovementsList result={result} />
           </div>
+            </>
+          )}
 
-          {/* Footer Actions */}
+          {/* Footer Actions - shown for all result views */}
           <div className="flex flex-col items-center gap-5">
             {/* Export buttons */}
             <div className="flex flex-wrap justify-center gap-3">
@@ -549,7 +692,12 @@ export function HomePage() {
               </button>
             </div>
             <button
-              onClick={() => setResult(null)}
+              onClick={() => {
+                setResult(null)
+                setResultView('overview')
+                setCompletedQuickWins(new Set())
+                setCompletedRoadmapItems(new Set())
+              }}
               className="btn-secondary"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
