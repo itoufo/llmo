@@ -61,22 +61,22 @@ export function analyzeSEO(html: string): SEOAnalysisResult {
   }
 
   // 見出しタグの分析
-  const h1Matches = html.match(/<h1[^>]*>([^<]*)<\/h1>/gi) || []
-  const h2Matches = html.match(/<h2[^>]*>([^<]*)<\/h2>/gi) || []
-  const h3Matches = html.match(/<h3[^>]*>([^<]*)<\/h3>/gi) || []
+  const h1Matches = html.match(/<h1[^>]*>[\s\S]*?<\/h1>/gi) || []
+  const h2Matches = html.match(/<h2[^>]*>[\s\S]*?<\/h2>/gi) || []
+  const h3Matches = html.match(/<h3[^>]*>[\s\S]*?<\/h3>/gi) || []
 
   const headings = {
     h1: {
       count: h1Matches.length,
-      content: h1Matches.map(h => h.replace(/<\/?h1[^>]*>/gi, ''))
+      content: h1Matches.map(h => h.replace(/<[^>]*>/g, '').trim())
     },
     h2: {
       count: h2Matches.length,
-      content: h2Matches.map(h => h.replace(/<\/?h2[^>]*>/gi, ''))
+      content: h2Matches.map(h => h.replace(/<[^>]*>/g, '').trim())
     },
     h3: {
       count: h3Matches.length,
-      content: h3Matches.map(h => h.replace(/<\/?h3[^>]*>/gi, ''))
+      content: h3Matches.map(h => h.replace(/<[^>]*>/g, '').trim())
     },
     structure: '',
     score: 0,
