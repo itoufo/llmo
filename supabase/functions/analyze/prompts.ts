@@ -249,9 +249,64 @@ LLMが回答生成時に引用素材として使いやすいか:
       "action": "具体的な改善アクション",
       "example": "追加すべき文章や見出しの例",
       "enablesQuestions": ["この改善で答えられるようになる質問"],
-      "expectedImpact": "非常に高い"
+      "expectedImpact": "非常に高い",
+      "effort": "minimal" / "low" / "medium" / "high" / "major",
+      "impactPrediction": {
+        "metricAffected": "aiCitation" / "questionFit" / "coverage" / "structure" / "eeat" / "seoOverall",
+        "currentEstimate": 数値,
+        "predictedScore": 数値,
+        "confidenceLevel": "high" / "medium" / "low"
+      },
+      "evidence": {
+        "contentQuotes": ["問題箇所の引用1", "引用2"],
+        "scoreJustification": "このスコアになった具体的理由"
+      },
+      "isQuickWin": true / false,
+      "implementationOrder": 数値(1から順番)
     }
-  ]
+  ],
+  "consultingInsights": {
+    "executiveSummary": {
+      "headline": "診断結果を1文で要約（例：「LLMOスコアは業界平均以下で、特にE-E-A-T面での改善が急務です」）",
+      "keyFindings": [
+        {"icon": "critical" / "warning" / "info", "finding": "重要な発見1"},
+        {"icon": "critical" / "warning" / "info", "finding": "重要な発見2"}
+      ],
+      "overallVerdict": "excellent" / "good" / "needs-improvement" / "critical"
+    },
+    "quickWins": {
+      "items": [
+        {
+          "title": "改善項目",
+          "effort": "30分",
+          "impact": "+5点",
+          "description": "具体的な手順"
+        }
+      ],
+      "totalTimeEstimate": "2-4時間",
+      "expectedTotalGain": "+15-20点"
+    },
+    "roadmap": {
+      "phases": [
+        {
+          "phase": "Phase 1: 即座に実施",
+          "timeframe": "1-2日",
+          "items": ["改善1", "改善2"],
+          "expectedGain": "+10点"
+        },
+        {
+          "phase": "Phase 2: 短期",
+          "timeframe": "1週間",
+          "items": ["改善3", "改善4"],
+          "expectedGain": "+15点"
+        }
+      ]
+    },
+    "competitiveContext": {
+      "industryBenchmark": "このコンテンツタイプの業界平均スコア推定",
+      "positioningAdvice": "競合との差別化のためのアドバイス"
+    }
+  }
 }
 `
 }

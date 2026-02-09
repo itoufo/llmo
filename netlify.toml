@@ -1,3 +1,28 @@
 [build]
   command = "npm run build"
   publish = "dist"
+
+[dev]
+  functionsTimeout = 120
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["cheerio"]
+
+[functions.analyze]
+  external_node_modules = ["cheerio"]
+  timeout = 120
+
+[functions.analyze-background]
+  external_node_modules = ["cheerio"]
+  timeout = 900
+
+[[edge_functions]]
+  function = "basic-auth"
+  path = "/*"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

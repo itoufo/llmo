@@ -215,3 +215,86 @@ html {
     animation: shimmer 1.5s infinite;
   }
 }
+
+/* Print styles for PDF export via window.print() */
+@media print {
+  /* Hide everything except the report */
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide non-report UI: header, form, footer, tabs, export buttons */
+  body > #root > * > *:not([data-print-area]) {
+    display: none !important;
+  }
+
+  /* The print area itself should show */
+  [data-print-area] {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide interactive elements inside the report */
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Fix gradient text — print renders background-clip:text properly,
+     but ensure solid fallback colors just in case */
+  .text-gradient {
+    -webkit-text-fill-color: #6366f1 !important;
+    color: #6366f1 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .text-gradient-blue {
+    -webkit-text-fill-color: #4f46e5 !important;
+    color: #4f46e5 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Force background colors to print */
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* Remove glass/blur effects — not supported in print */
+  .glass, .glass-strong, .card {
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Semi-transparent backgrounds → opaque */
+  [class*="bg-white\\/"] {
+    background-color: #ffffff !important;
+  }
+
+  /* Remove shadows for cleaner print */
+  .card-elevated, .card {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Disable animations */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Page break control */
+  .card-elevated, .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
